@@ -28,7 +28,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div>
+        <div className="auth">
       <h1>Forgot Password</h1>
       <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
       {!sent ? (

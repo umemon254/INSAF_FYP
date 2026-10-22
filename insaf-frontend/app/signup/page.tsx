@@ -6,20 +6,25 @@ import { supabase } from '@/lib/supabase'
 
 export default function Signup() {
   const router = useRouter()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [msg, setMsg] = useState('')
 
   async function handleSignup() {
-    const { error } = await supabase.auth.signUp({ email, password })
+    if (!name.trim()) return setMsg('Please enter your name.')
+    const { error } = await supabase.auth.signUp({
+      email, password, options: { data: { full_name: name.trim() } },
+    })
     if (error) return setMsg(error.message)
     await supabase.auth.signOut()
     router.push('/login')
   }
 
   return (
-    <div>
+    <div className="auth">
       <h1>Sign Up</h1>
+      <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
       <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
       <input type="password" placeholder="Password (min 6)" value={password} onChange={e => setPassword(e.target.value)} />
       <button onClick={handleSignup}>Sign Up</button>

@@ -9,13 +9,28 @@ export default function Signup() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
+  const [sent, setSent] = useState(false)
   const [msg, setMsg] = useState('')
 
   async function handleSignup() {
     if (!name.trim()) return setMsg('Please enter your name.')
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password, options: { data: { full_name: name.trim() } },
     })
+    if (error) return setMsg(error.message)
+    if (data.user && data.user.identities?.length === 0)
+      return setMsg('This email is already registered. Please log in or use Forgot password.')
+    if (data.session) {            // "Confirm email" is off: no code needed
+      await supabase.auth.signOut()
+      return router.push('/login')
+    }
+    setSent(true)
+    setMsg('We sent a verification code to your email.')
+  }
+
+  async function verify() {
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'signup' })
     if (error) return setMsg(error.message)
     await supabase.auth.signOut()
     router.push('/login')
@@ -24,10 +39,19 @@ export default function Signup() {
   return (
     <div className="auth">
       <h1>Sign Up</h1>
-      <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password (min 6)" value={password} onChange={e => setPassword(e.target.value)} />
-      <button onClick={handleSignup}>Sign Up</button>
+      {!sent ? (
+        <>
+          <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
+          <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input type="password" placeholder="Password (min 6)" value={password} onChange={e => setPassword(e.target.value)} />
+          <button onClick={handleSignup}>Sign Up</button>
+        </>
+      ) : (
+        <>
+          <input placeholder="Verification code from email" value={code} onChange={e => setCode(e.target.value)} />
+          <button onClick={verify}>Verify and continue</button>
+        </>
+      )}
       <p>{msg}</p>
       <Link href="/login">Already have an account? Login</Link>
     </div>

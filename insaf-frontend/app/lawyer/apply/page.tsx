@@ -86,6 +86,7 @@ export default function Apply() {
           </label>
         ))}
       </div>
+        <p><Link href="/dashboard">← Back to dashboard</Link></p>
       <button onClick={submit}>{editing ? 'Update application' : status === 'rejected' ? 'Apply again' : 'Submit for approval'}</button>
       <p>{msg}</p>
     </div>

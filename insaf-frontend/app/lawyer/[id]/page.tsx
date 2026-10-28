@@ -1,5 +1,6 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase, pic } from '@/lib/supabase'
 
@@ -12,14 +13,18 @@ function Detail() {
       .then(r => setL(r.data))
   }, [id])
 
-  if (!l) return <p>Loading...</p>
   return (
     <div>
-      {l.picture_path && <img src={pic(l.picture_path)} width={150} alt="" />}
-      <h1>{l.full_name}</h1>
-      <p>Email: {l.email}</p>
-      <p>Phone: {l.phone}</p>
-      <p>Specializations: {l.specializations.join(', ')}</p>
+      <p><Link href="/dashboard">← Back to dashboard</Link></p>
+      {!l ? <p>Loading...</p> : (
+        <>
+          {l.picture_path && <img src={pic(l.picture_path)} width={150} alt="" />}
+          <h1>{l.full_name}</h1>
+          <p>Email: {l.email}</p>
+          <p>Phone: {l.phone}</p>
+          <p>Specializations: {l.specializations.join(', ')}</p>
+        </>
+      )}
     </div>
   )
 }

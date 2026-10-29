@@ -1,29 +1,35 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const links = [
-  ['/dashboard', 'Home'],
-  ['/dashboard/settings', 'Settings'],
-  ['/dashboard/about', 'About'],
-  ['/dashboard/help', 'Help'],
-  ['/lawyer/apply', 'I am a lawyer'],
-]
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname()
   const router = useRouter()
+  const [isLawyer, setIsLawyer] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { if (!data.session) router.push('/login') })
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return router.push('/login')
+      const r = await supabase.from('lawyer_directory').select('user_id')
+        .eq('user_id', data.session.user.id).maybeSingle()
+      setIsLawyer(!!r.data)
+    })
   }, [router])
 
   async function logout() {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  const links = [
+    ['/dashboard', 'Home'],
+    ['/dashboard/settings', 'Settings'],
+    ['/dashboard/about', 'About'],
+    ['/dashboard/help', 'Help'],
+    isLawyer ? ['/lawyer/dashboard', 'My lawyer profile'] : ['/lawyer/apply', 'I am a lawyer'],
+  ]
 
   return (
     <div className="shell">

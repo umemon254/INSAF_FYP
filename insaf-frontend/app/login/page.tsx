@@ -14,8 +14,7 @@ export default function Login() {
     const admin = await supabase.from('admins').select('user_id').eq('user_id', id).maybeSingle()
     if (admin.error) return setMsg('Admin check failed: ' + admin.error.message)
     if (admin.data) return router.replace('/admin')
-    const lawyer = await supabase.from('lawyer_directory').select('user_id').eq('user_id', id).maybeSingle()
-    router.replace(lawyer.data ? '/lawyer/dashboard' : '/dashboard')
+    router.replace('/dashboard')
   }
 
   useEffect(() => {

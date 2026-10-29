@@ -59,6 +59,7 @@ export default function Apply() {
   if (status === 'approved')
     return (
       <div>
+        <p><Link href="/dashboard">← Back to dashboard</Link></p>
         <h2>Your application is approved.</h2>
         <p>You can update your phone, specializations and picture on your <Link href="/lawyer/dashboard">lawyer dashboard</Link>.</p>
       </div>
@@ -66,6 +67,7 @@ export default function Apply() {
 
   return (
     <div>
+      <p><Link href="/dashboard">← Back to dashboard</Link></p>
       <h1>{editing ? 'Your Application' : 'Lawyer Registration'}</h1>
       {editing && <p>Status: <b>pending</b>. You can still fix your details until the admin reviews them.</p>}
       {status === 'rejected' && (
@@ -86,7 +88,6 @@ export default function Apply() {
           </label>
         ))}
       </div>
-        <p><Link href="/dashboard">← Back to dashboard</Link></p>
       <button onClick={submit}>{editing ? 'Update application' : status === 'rejected' ? 'Apply again' : 'Submit for approval'}</button>
       <p>{msg}</p>
     </div>

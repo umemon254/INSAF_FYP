@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, pic } from '@/lib/supabase'
+import Link from 'next/link'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 
@@ -45,6 +46,7 @@ export default function LawyerDashboard() {
   if (!me) return <p>Loading...</p>
   return (
     <div>
+      <p><Link href="/dashboard">← Back to dashboard</Link></p>
       <h1>Lawyer Dashboard</h1>
       {me.picture_path && <img src={pic(me.picture_path)} width={120} alt="" />}
       <h2>{me.full_name}</h2>
@@ -65,6 +67,7 @@ export default function LawyerDashboard() {
       </div>
       <button onClick={save}>Save changes</button>
       <p>{msg}</p>
+      {msg === 'Saved.' && <p><Link href="/dashboard">Go to dashboard</Link></p>}
       <button onClick={logout}>Logout</button>
     </div>
   )

@@ -15,11 +15,13 @@ function Detail() {
 
   return (
     <div>
-      <p><Link href="/dashboard">← Back to dashboard</Link></p>
-      {!l ? <p>Loading...</p> : (
+      <div className="titlebar">
+        <Link href="/dashboard" className="back" aria-label="Back to dashboard">🡨</Link>
+        <h1>{l ? l.full_name : 'Loading...'}</h1>
+      </div>
+      {l && (
         <>
           {l.picture_path && <img src={pic(l.picture_path)} width={150} alt="" />}
-          <h1>{l.full_name}</h1>
           <p>Email: {l.email}</p>
           <p>Phone: {l.phone}</p>
           <p>Specializations: {l.specializations.join(', ')}</p>

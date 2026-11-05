@@ -9,6 +9,8 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [show, setShow] = useState(false)
 
   async function go(id: string) {
     const admin = await supabase.from('admins').select('user_id').eq('user_id', id).maybeSingle()
@@ -21,18 +23,24 @@ export default function Login() {
     supabase.auth.getSession().then(({ data }) => { if (data.session) go(data.session.user.id) })
   }, [])
 
-  async function handleLogin() {
+   async function handleLogin() {
+    setBusy(true); setMsg('')
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return setMsg(error.message)
-    go(data.user.id)
+    if (error) { setBusy(false); return setMsg(error.message) }
+    await go(data.user.id)
   }
 
   return (
     <div className="auth">
       <h1>Login</h1>
       <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-      <button onClick={handleLogin}>Login</button>
+      <div className="pw">
+        <input type={show ? 'text' : 'password'} placeholder="Password" value={password}
+          onChange={e => setPassword(e.target.value)} />
+        <button type="button" className={show ? 'eye off' : 'eye'}
+          onClick={() => setShow(!show)} aria-label="Show or hide password" />
+      </div>
+      <button onClick={handleLogin} disabled={busy}>{busy ? 'Please wait...' : 'Login'}</button>
       <p>{msg}</p>
       <Link href="/forgot-password">Forgot password?</Link> | <Link href="/signup">Sign up</Link>
     </div>

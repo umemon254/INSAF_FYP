@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, pic } from '@/lib/supabase'
+import { supabase, pic , onlyDigits } from '@/lib/supabase'
 import Link from 'next/link'
 
-const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
+const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate' , 'Other']
 
 export default function LawyerDashboard() {
   const router = useRouter()
@@ -24,7 +24,8 @@ export default function LawyerDashboard() {
   }, [router])
 
   async function save() {
-    if (!phone || !specs.length) return setMsg('Phone and at least one specialization are required.')
+    if (!/^\d{11}$/.test(phone)) return setMsg('Phone number must be exactly 11 digits.')
+    if (!specs.length) return setMsg('Pick at least one specialization.')
     const row: any = { phone, specializations: specs }
     if (photo) {
       const p = `${me.user_id}/${Date.now()}-pic`
@@ -46,15 +47,18 @@ export default function LawyerDashboard() {
   if (!me) return <p>Loading...</p>
   return (
     <div>
-      <p><Link href="/dashboard">← Back to dashboard</Link></p>
-      <h1>Lawyer Dashboard</h1>
+      <div className="titlebar">
+        <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
+        <h1>Lawyer Dashboard</h1>
+      </div>
       {me.picture_path && <img src={pic(me.picture_path)} width={120} alt="" />}
       <h2>{me.full_name}</h2>
       <p>Email: {me.email}</p>
       <p><i>Name, email and Bar Council ID cannot be changed here. Email the admin for a correction.</i></p>
 
       <h2>Update your profile</h2>
-      <input placeholder="Phone number" value={phone} onChange={e => setPhone(e.target.value)} />
+      <input placeholder="Phone number (03001234567)" inputMode="numeric" maxLength={11} value={phone}
+       onChange={e => setPhone(onlyDigits(e.target.value, 11))} />
       <p>New profile picture (optional)</p>
       <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, margin: '10px 0' }}>
@@ -67,7 +71,6 @@ export default function LawyerDashboard() {
       </div>
       <button onClick={save}>Save changes</button>
       <p>{msg}</p>
-      {msg === 'Saved.' && <p><Link href="/dashboard">Go to dashboard</Link></p>}
       <button onClick={logout}>Logout</button>
     </div>
   )

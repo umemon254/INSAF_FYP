@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase , passwordError} from '@/lib/supabase'
 
 export default function ForgotPassword() {
   const router = useRouter()
@@ -10,17 +10,21 @@ export default function ForgotPassword() {
   const [code, setCode] = useState('')
   const [pass, setPass] = useState('')
   const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [show, setShow] = useState(false)
 
-  async function sendCode() {
+    async function sendCode() {
+    setBusy(true); setMsg('Sending the code, this can take a few seconds...')
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim())
+    setBusy(false)
     if (error) return setMsg(error.message)
-    setSent(true)
-    setCode('')
+    setSent(true); setCode('')
     setMsg('Code sent. Use the code from the newest email only.')
   }
 
   async function reset() {
-    if (pass.length < 6) return setMsg('Password must be at least 6 characters.')
+    const pe = passwordError(pass)
+    if (pe) return setMsg(pe)
     const v = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'recovery' })
     if (v.error) return setMsg('Code error: ' + v.error.message)
     const u = await supabase.auth.updateUser({ password: pass })
@@ -39,7 +43,13 @@ export default function ForgotPassword() {
       ) : (
         <>
           <input placeholder="Code from email" value={code} onChange={e => setCode(e.target.value)} />
-          <input type="password" placeholder="New password" value={pass} onChange={e => setPass(e.target.value)} />
+          <div className="pw">
+            <input type={show ? 'text' : 'password'} placeholder="New password" value={pass}
+              onChange={e => setPass(e.target.value)} />
+            <button type="button" className={show ? 'eye off' : 'eye'}
+              onClick={() => setShow(!show)} aria-label="Show or hide password" />
+          </div>
+          <p className="hint">At least 8 characters, with 1 uppercase letter, 1 number and 1 symbol.</p>
           <button onClick={reset}>Reset password</button>
           <button onClick={sendCode}>Send a new code</button>
         </>

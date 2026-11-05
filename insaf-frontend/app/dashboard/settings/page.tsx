@@ -19,7 +19,7 @@ export default function Settings() {
     <div>
       <h1>Settings</h1>
       <p>Name: <b>{name}</b><br />Email: {email}</p>
-      <p><i>Wrong name? Email the admin at <a href="mailto:umemon254@gmail.com">umemon254@gmail.com</a> from the email you signed up with, and they will correct it.</i></p>
+      <p><i>Wrong name? Email the admin at <a href="mailto:insaf.team3@gmail.com">insaf.team3@gmail.com</a> from the email you signed up with, and they will correct it.</i></p>
     </div>
   )
 }

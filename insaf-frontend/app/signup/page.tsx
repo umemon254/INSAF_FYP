@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase , passwordError } from '@/lib/supabase'
 
 export default function Signup() {
   const router = useRouter()
@@ -12,9 +12,12 @@ export default function Signup() {
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
   const [msg, setMsg] = useState('')
+  const [show, setShow] = useState(false)
 
   async function handleSignup() {
     if (!name.trim()) return setMsg('Please enter your name.')
+    const pe = passwordError(password)
+    if (pe) return setMsg(pe)
     const { data, error } = await supabase.auth.signUp({
       email, password, options: { data: { full_name: name.trim() } },
     })
@@ -43,7 +46,13 @@ export default function Signup() {
         <>
           <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
           <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input type="password" placeholder="Password (min 6)" value={password} onChange={e => setPassword(e.target.value)} />
+          <div className="pw">
+            <input type={show ? 'text' : 'password'} placeholder="Password" value={password}
+              onChange={e => setPassword(e.target.value)} />
+            <button type="button" className={show ? 'eye off' : 'eye'}
+              onClick={() => setShow(!show)} aria-label="Show or hide password" />
+          </div>
+          <p className="hint">At least 8 characters, with 1 uppercase letter, 1 number and 1 symbol.</p>
           <button onClick={handleSignup}>Sign Up</button>
         </>
       ) : (

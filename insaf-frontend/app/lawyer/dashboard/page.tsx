@@ -48,7 +48,7 @@ export default function LawyerDashboard() {
   return (
     <div>
       <div className="titlebar">
-        <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
+        <Link href="/dashboard" className="back" aria-label="Back to dashboard">🡨</Link>
         <h1>Lawyer Dashboard</h1>
       </div>
       {me.picture_path && <img src={pic(me.picture_path)} width={120} alt="" />}

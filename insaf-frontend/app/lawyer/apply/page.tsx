@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase, onlyDigits, fmtCnic } from '@/lib/supabase'
+import { supabase, onlyDigits, fmtCnic, cleanName, nameOk } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 const PROVINCES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad', 'Gilgit-Baltistan']
@@ -40,6 +40,7 @@ export default function Apply() {
     if (!user || !f.full_name || !f.bar_council_id || !specs.length || (!editing && (!photo || !cnicFile)))
       return setMsg('Fill all fields, pick a specialization, and add the picture and CNIC PDF.')
     if (!/^\d{11}$/.test(f.phone)) return setMsg('Phone number must be exactly 11 digits, for example 03001234567.')
+    if (!nameOk(f.full_name)) return setMsg('Name can have letters and spaces only (at least 2 letters).')
     if (!/^\d{5}-\d{7}-\d$/.test(f.cnic)) return setMsg('CNIC must look like 12345-1234567-1.')
     if (!f.province) return setMsg('Select the Bar Council that issued your licence.')
     if (!/^[A-Z0-9/-]{3,20}$/.test(f.bar_council_id))
@@ -90,7 +91,7 @@ export default function Apply() {
         <p><b>Your previous application was rejected.</b><br />Reason: {app.rejection_reason}<br />Fix the details and apply again.</p>
       )}
 
-      <input placeholder="Full name" value={f.full_name} onChange={e => setF({ ...f, full_name: e.target.value })} />
+      <input placeholder="Full name" value={f.full_name} onChange={e => setF({ ...f, full_name: cleanName(e.target.value) })} />
       <input placeholder="Phone number (03001234567)" inputMode="numeric" maxLength={11} value={f.phone}
         onChange={e => setF({ ...f, phone: onlyDigits(e.target.value, 11) })} />
       <input placeholder="CNIC number (12345-1234567-1)" inputMode="numeric" maxLength={15} value={f.cnic}

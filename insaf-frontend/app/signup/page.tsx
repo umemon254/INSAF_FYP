@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase , passwordError } from '@/lib/supabase'
+import { supabase , passwordError , cleanName, nameOk } from '@/lib/supabase'
 
 export default function Signup() {
   const router = useRouter()
@@ -15,7 +15,7 @@ export default function Signup() {
   const [show, setShow] = useState(false)
 
   async function handleSignup() {
-    if (!name.trim()) return setMsg('Please enter your name.')
+    if (!nameOk(name)) return setMsg('Name can have letters and spaces only (at least 2 letters).')
     const pe = passwordError(password)
     if (pe) return setMsg(pe)
     const { data, error } = await supabase.auth.signUp({
@@ -44,7 +44,7 @@ export default function Signup() {
       <h1>Sign Up</h1>
       {!sent ? (
         <>
-          <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
+          <input placeholder="Full name" value={name} onChange={e => setName(cleanName(e.target.value))} />
           <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
           <div className="pw">
             <input type={show ? 'text' : 'password'} placeholder="Password" value={password}

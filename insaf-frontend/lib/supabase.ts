@@ -24,3 +24,7 @@ export const fmtCnic = (v: string) => {
   if (d.length > 12) o += '-' + d.slice(12)
   return o
 }
+
+export const cleanName = (v: string) => v.replace(/[^A-Za-z .'-]/g, '').replace(/\s{2,}/g, ' ').slice(0, 50)
+
+export const nameOk = (v: string) => /^[A-Za-z][A-Za-z .'-]{1,49}$/.test(v.trim())

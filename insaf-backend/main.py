@@ -11,8 +11,15 @@ GMAIL = os.environ["SMTP_USER"]
 GMAIL_PASS = os.environ["SMTP_PASS"]
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"],
-                   allow_methods=["*"], allow_headers=["*"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):3000",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 def get(path, token):
     headers = {"apikey": ANON, "Authorization": f"Bearer {token}"}

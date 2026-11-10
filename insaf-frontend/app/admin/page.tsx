@@ -1,125 +1,29 @@
-// 'use client'
-// import { useEffect, useState } from 'react'
-// import { useRouter } from 'next/navigation'
-// import { supabase, pic } from '@/lib/supabase'
 
-// export default function Admin() {
-//   const router = useRouter()
-//   const [apps, setApps] = useState<any[]>([])
-//   const [users, setUsers] = useState<any[]>([])
-//   const [busy, setBusy] = useState(false)
-
-//   async function load() {
-//     const { data: { user } } = await supabase.auth.getUser()
-//     if (!user) return router.push('/login')
-//     const a = await supabase.from('admins').select('user_id').eq('user_id', user.id).maybeSingle()
-//     if (!a.data) return router.push('/dashboard')
-//     const list = (await supabase.from('lawyer_applications').select('*').order('created_at', { ascending: false })).data ?? []
-//     for (const x of list)
-//       if (x.cnic_path) x.cnic_url = (await supabase.storage.from('cnic-images').createSignedUrl(x.cnic_path, 600)).data?.signedUrl
-//         const dir = (await supabase.from('lawyer_directory').select('user_id, phone, specializations, picture_path')).data ?? []
-//     for (const x of list) {
-//       const d = dir.find((r: any) => r.user_id === x.user_id)
-//       if (d) { x.phone = d.phone; x.specializations = d.specializations; x.picture_path = d.picture_path }
-//     }
-//     setApps(list)
-//     setUsers((await supabase.from('profiles').select('id, email')).data ?? [])
-//   }
-//   useEffect(() => { load() }, [])
-
-//     async function decide(a: any, ok: boolean) {
-//     if (busy) return
-//     const reason = ok ? null : prompt('Reason for rejection?')
-//     if (!ok && !reason) return
-//     setBusy(true)
-
-//     // only change an application that is still pending
-//     const r = await supabase.from('lawyer_applications')
-//       .update({ status: ok ? 'approved' : 'rejected', rejection_reason: reason })
-//       .eq('user_id', a.user_id).eq('status', 'pending').select()
-//     if (r.error || !r.data?.length) {
-//       setBusy(false)
-//       alert(r.error?.message ?? 'This application was already reviewed.')
-//       return load()
-//     }
-
-//     if (ok) {
-//       const d = await supabase.from('lawyer_directory').insert({
-//         user_id: a.user_id, full_name: a.full_name, email: a.email,
-//         phone: a.phone, specializations: a.specializations, picture_path: a.picture_path,
-//       })
-//       if (d.error) { setBusy(false); return alert(d.error.message) }
-//     } else {
-//       await supabase.from('lawyer_directory').delete().eq('user_id', a.user_id)
-//     }
-
-//     try {
-//       const { data: { session } } = await supabase.auth.getSession()
-//       const res = await fetch('http://localhost:8000/notify-lawyer', {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session!.access_token}` },
-//         body: JSON.stringify({ lawyer_id: a.user_id }),
-//       })
-//       if (!res.ok) alert('Saved, but the email failed.')
-//     } catch {
-//       alert('Saved, but the backend is not running, so no email was sent.')
-//     }
-//     setBusy(false)
-//     load()
-//   }
-//   async function logout() {
-//     await supabase.auth.signOut()
-//     router.push('/login')
-//   }
-
-//   const pending = apps.filter(a => a.status === 'pending')
-//   const reviewed = apps.filter(a => a.status !== 'pending')
-
-//   const card = (a: any) => (
-//     <div key={a.user_id} className="card">
-//       {a.picture_path && <img src={pic(a.picture_path)} width={80} alt="" />}
-//       <p><b>{a.full_name}</b> ({a.email}), <i>{a.status}</i></p>
-//       <p>Phone: {a.phone}<br />CNIC: {a.cnic}Bar ID: {a.bar_council_id} ({a.province})</p>
-//       {a.cnic_url && <a href={a.cnic_url} target="_blank">Open CNIC PDF</a>}
-//       <p>{a.specializations.join(', ')}</p>
-//       {a.status === 'pending' && (
-//         <>
-//           <button onClick={() => decide(a, true)} disabled={busy}>Approve</button>
-//           <button onClick={() => decide(a, false)} disabled={busy}>Reject</button>
-//         </>
-//       )}
-//     </div>
-//   )
-
-//   return (
-//     <div>
-//       <h1>Admin Dashboard</h1>
-//       <p>{users.length} users, {pending.length} pending applications</p>
-
-//       <h2>Pending ({pending.length})</h2>
-//       {pending.length === 0 && <p>No pending applications.</p>}
-//       {pending.map(card)}
-
-//       <h2>Reviewed ({reviewed.length})</h2>
-//       {reviewed.map(card)}
-
-//       <h2>All users</h2>
-//       {users.map(u => <p key={u.id}>{u.email}</p>)}
-
-//       <button onClick={logout}>Logout</button>
-//     </div>
-//   )
-// }
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, pic } from '@/lib/supabase'
+import { supabase, pic, logoutAndRedirect } from '@/lib/supabase'
+
+const apiBase = () =>
+  window.location.hostname.endsWith('devtunnels.ms')
+    ? `https://${window.location.hostname.replace('-3000.', '-8000.')}`
+    : 'http://localhost:8000'
+
+
+
+const items = [['dashboard', 'Dashboard'], ['pending', 'Lawyer Requests'], ['approved', 'Approved'],
+               ['rejected', 'Rejected'], ['blocked', 'Blocked'], ['users', 'Users']]
 
 export default function Admin() {
   const router = useRouter()
   const [apps, setApps] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [tab, setTab] = useState('dashboard')
+  const [view, setView] = useState<any>(null)
+  const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const [confirm, setConfirm] = useState<'' | 'remove' | 'block'>('')
 
   async function load() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -129,38 +33,43 @@ export default function Admin() {
 
     const list = (await supabase.from('lawyer_applications').select('*').order('created_at', { ascending: false })).data ?? []
     for (const x of list) {
-      if (x.cnic_path) {
-        x.cnic_url = (await supabase.storage.from('cnic-images').createSignedUrl(x.cnic_path, 600)).data?.signedUrl
-      }
+      if (x.cnic_path) x.cnic_url = (await supabase.storage.from('cnic-images').createSignedUrl(x.cnic_path, 600)).data?.signedUrl
     }
-
     const dir = (await supabase.from('lawyer_directory').select('user_id, phone, specializations, picture_path')).data ?? []
     for (const x of list) {
       const d = dir.find((r: any) => r.user_id === x.user_id)
       if (d) { x.phone = d.phone; x.specializations = d.specializations; x.picture_path = d.picture_path }
     }
-
     setApps(list)
-    setUsers((await supabase.from('profiles').select('id, email')).data ?? [])
+    setUsers((await supabase.from('profiles').select('id, email, full_name')).data ?? [])
   }
   useEffect(() => { load() }, [])
+
+  async function notify(id: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${apiBase()}/notify-lawyer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session!.access_token}` },
+        body: JSON.stringify({ lawyer_id: id }),
+      })
+      return res.ok
+    } catch (e) { console.error(e); return false }
+  }
 
   async function decide(a: any, ok: boolean) {
     if (busy) return
     const reason = ok ? null : prompt('Reason for rejection?')
     if (!ok && !reason) return
     setBusy(true)
-
-    // only change an application that is still pending
     const r = await supabase.from('lawyer_applications')
       .update({ status: ok ? 'approved' : 'rejected', rejection_reason: reason })
       .eq('user_id', a.user_id).eq('status', 'pending').select()
     if (r.error || !r.data?.length) {
-      setBusy(false)
+      setBusy(false); setView(null)
       alert(r.error?.message ?? 'This application was already reviewed.')
       return load()
     }
-
     if (ok) {
       const d = await supabase.from('lawyer_directory').insert({
         user_id: a.user_id, full_name: a.full_name, email: a.email,
@@ -170,66 +79,157 @@ export default function Admin() {
     } else {
       await supabase.from('lawyer_directory').delete().eq('user_id', a.user_id)
     }
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch('http://localhost:8000/notify-lawyer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session!.access_token}` },
-        body: JSON.stringify({ lawyer_id: a.user_id }),
-      })
-      if (!res.ok) alert('Saved, but the email failed.')
-    } catch {
-      alert('Saved, but the backend is not running, so no email was sent.')
-    }
-    setBusy(false)
+    if (!(await notify(a.user_id))) alert('Saved, but the email could not be sent.')
+    setBusy(false); setView(null)
     load()
   }
 
-  async function logout() {
-    await supabase.auth.signOut()
-    router.push('/login')
+  async function resend(a: any) {
+    alert((await notify(a.user_id)) ? 'Email sent.' : 'The email could not be sent.')
   }
 
-  const pending = apps.filter(a => a.status === 'pending')
-  const reviewed = apps.filter(a => a.status !== 'pending')
+    function done() { setBusy(false); setConfirm(''); setView(null); load() }
 
-  const card = (a: any) => (
-    <div key={a.user_id} className="card">
-      {a.picture_path && <img src={pic(a.picture_path)} width={80} alt="" />}
-      <p><b>{a.full_name}</b> ({a.email}), <i>{a.status}</i></p>
-      <p>
-        Phone: {a.phone}<br />
-        CNIC: {a.cnic}<br />
-        Bar ID: {a.bar_council_id} ({a.province})<br />
-        {a.cnic_url && <a href={a.cnic_url} target="_blank" rel="noreferrer">Open CNIC PDF</a>}
-      </p>
-      <p>{(a.specializations ?? []).join(', ')}</p>
-      {a.status === 'pending' && (
-        <>
-          <button onClick={() => decide(a, true)} disabled={busy}>Approve</button>
-          <button onClick={() => decide(a, false)} disabled={busy}>Reject</button>
-        </>
-      )}
-    </div>
-  )
+  async function block(a: any) {
+    setBusy(true)
+    const r = await supabase.from('lawyer_applications').update({ status: 'blocked' }).eq('user_id', a.user_id).select()
+    if (r.error || !r.data?.length) { setBusy(false); return alert(r.error?.message ?? 'Not saved.') }
+    await supabase.from('lawyer_directory').delete().eq('user_id', a.user_id)
+    done()
+  }
+
+  async function unblock(a: any) {
+    setBusy(true)
+    const r = await supabase.from('lawyer_applications').update({ status: 'approved' }).eq('user_id', a.user_id).select()
+    if (r.error || !r.data?.length) { setBusy(false); return alert(r.error?.message ?? 'Not saved.') }
+    const d = await supabase.from('lawyer_directory').insert({
+      user_id: a.user_id, full_name: a.full_name, email: a.email,
+      phone: a.phone, specializations: a.specializations, picture_path: a.picture_path,
+    })
+    if (d.error) alert(d.error.message)
+    done()
+  }
+
+  async function remove(a: any) {
+    setBusy(true)
+    const r = await supabase.from('lawyer_applications').delete().eq('user_id', a.user_id).select()
+    if (r.error || !r.data?.length) { setBusy(false); return alert(r.error?.message ?? 'Not removed.') }
+    await supabase.from('lawyer_directory').delete().eq('user_id', a.user_id)
+    if (a.picture_path) await supabase.storage.from('lawyer-pictures').remove([a.picture_path])
+    if (a.cnic_path) await supabase.storage.from('cnic-images').remove([a.cnic_path])
+    done()
+  }
+
+  const count = (s: string) => apps.filter(a => a.status === s).length
+  const isList = ['pending', 'approved', 'rejected', 'blocked'].includes(tab)
+  const list = apps.filter(a => a.status === tab &&
+    [a.full_name, a.email, a.bar_council_id].join(' ').toLowerCase().includes(q.toLowerCase()))
 
   return (
-    <div>
-      <h1>Admin Dashboard</h1>
-      <p>{users.length} users, {pending.length} pending applications</p>
+    <div className="shell">
+      <nav className={menu ? 'side open' : 'side'}>
+        <div className="side-top">
+          <h3>INSAF Admin</h3>
+          <button type="button" className="menu-btn" aria-label="Menu" onClick={() => setMenu(!menu)} />
+        </div>
+        <div className="side-links">
+          {items.map(([k, label]) => (
+            <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMenu(false) }}>
+              {label}
+              {k === 'pending' && count('pending') > 0 && <span className="badge pending" style={{ marginLeft: 8 }}>{count('pending')}</span>}
+            </button>
+          ))}
+          <span className="spacer" />
+          <button onClick={logoutAndRedirect}>Logout</button>
+        </div>
+      </nav>
 
-      <h2>Pending ({pending.length})</h2>
-      {pending.length === 0 && <p>No pending applications.</p>}
-      {pending.map(card)}
+      <div className="main">
+        <div className="topbar">
+          <h1>{items.find(i => i[0] === tab)?.[1]}</h1>
+          {isList && <input className="search" placeholder="Search name, email or Bar ID" value={q} onChange={e => setQ(e.target.value)} />}
+        </div>
 
-      <h2>Reviewed ({reviewed.length})</h2>
-      {reviewed.map(card)}
+        {tab === 'dashboard' && (
+          <div className="stats">
+            <div className="stat"><b>{count('pending')}</b>Pending requests</div>
+            <div className="stat"><b>{count('approved')}</b>Approved lawyers</div>
+            <div className="stat"><b>{count('rejected')}</b>Rejected</div>
+            <div className="stat"><b>{users.length}</b>Total users</div>
+          </div>
+        )}
 
-      <h2>All users</h2>
-      {users.map(u => <p key={u.id}>{u.email}</p>)}
+        {isList && list.length === 0 && <p>Nothing here.</p>}
+        {isList && list.map(a => (
+          <div key={a.user_id} className="row">
+            {a.picture_path && <img src={pic(a.picture_path)} alt="" />}
+            <div className="grow">
+              <b>{a.full_name}</b> <span className={`badge ${a.status}`}>{a.status}</span><br />
+              {a.email}<br />
+              {a.province ? `${a.province} · ` : ''}{a.bar_council_id} · {(a.specializations ?? []).join(', ')}
+            </div>
+            <button onClick={() => setView(a)}>View</button>
+          </div>
+        ))}
 
-      <button onClick={logout}>Logout</button>
+        {tab === 'users' && users.map(u => (
+          <div key={u.id} className="row">
+            <div className="grow"><b>{u.full_name || '-'}</b><br />{u.email}</div>
+          </div>
+        ))}
+      </div>
+
+      {view && (
+        <div className="modal-bg" onClick={() => setView(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0 }}>{view.full_name}</h2>
+            <div className="panels">
+              <div className="panel">
+                <h3>Lawyer Information</h3>
+                {view.picture_path && <img src={pic(view.picture_path)} width={80} alt="" />}
+                <p>Province: {view.province || '-'}<br />
+                  Bar Council ID: {view.bar_council_id}<br />
+                  Specializations: {(view.specializations ?? []).join(', ')}</p>
+              </div>
+              <div className="panel">
+                <h3>Contact and Identity</h3>
+                <p>Email: {view.email}<br />
+                  Phone: {view.phone}<br />
+                  CNIC: {view.cnic}<br />
+                  {view.cnic_url && <a href={view.cnic_url} target="_blank" rel="noreferrer">Open CNIC PDF</a>}</p>
+              </div>
+            </div>
+                        {confirm ? (
+              <div className="confirm">
+                <p><b>{confirm === 'remove' ? 'Remove this lawyer permanently?' : 'Block this lawyer?'}</b></p>
+                <div className="row" style={{ margin: 0, boxShadow: 'none' }}>
+                  {view.picture_path ? <img src={pic(view.picture_path)} alt="" /> : <div className="avatar">{view.full_name?.[0]}</div>}
+                  <div className="grow"><b>{view.full_name}</b><br />{view.phone}<br />{view.email}</div>
+                </div>
+                <p>{confirm === 'remove'
+                  ? 'Their application, directory entry, photo and CNIC file will be deleted. They can apply again later.'
+                  : 'They will be hidden from the directory and cannot apply again until you unblock them.'}</p>
+                <button className="danger" disabled={busy}
+                  onClick={() => (confirm === 'remove' ? remove(view) : block(view))}>Yes, {confirm}</button>
+                <button className="ghost" onClick={() => setConfirm('')}>Cancel</button>
+              </div>
+            ) : view.status === 'pending' ? (
+              <>
+                <button onClick={() => decide(view, true)} disabled={busy}>Approve</button>
+                <button onClick={() => decide(view, false)} disabled={busy}>Reject</button>
+              </>
+            ) : (
+              <>
+                {view.status !== 'blocked' && <button onClick={() => resend(view)}>Resend email</button>}
+                {view.status === 'approved' && <button className="ghost" onClick={() => setConfirm('block')}>Block</button>}
+                {view.status === 'blocked' && <button onClick={() => unblock(view)} disabled={busy}>Unblock</button>}
+                <button className="danger" onClick={() => setConfirm('remove')}>Remove</button>
+              </>
+            )}
+            <button className="ghost" onClick={() => { setConfirm(''); setView(null) }}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

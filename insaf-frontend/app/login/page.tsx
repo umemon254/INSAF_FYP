@@ -1,47 +1,58 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function Login() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [msg, setMsg] = useState('')
-  const [busy, setBusy] = useState(false)
   const [show, setShow] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
 
   async function go(id: string) {
     const admin = await supabase.from('admins').select('user_id').eq('user_id', id).maybeSingle()
-    if (admin.error) return setMsg('Admin check failed: ' + admin.error.message)
-    if (admin.data) return router.replace('/admin')
-    router.replace('/dashboard')
+    if (admin.error) throw new Error('Admin check failed: ' + admin.error.message)
+    window.location.replace(admin.data ? '/admin' : '/dashboard')
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { if (data.session) go(data.session.user.id) })
+    const saved = sessionStorage.getItem('insaf_email')   // email typed at sign-up
+    if (saved) { setEmail(saved); sessionStorage.removeItem('insaf_email') }
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) go(data.session.user.id).catch(e => setMsg(e.message))
+    })
   }, [])
 
-   async function handleLogin() {
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy) return
     setBusy(true); setMsg('')
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setBusy(false); return setMsg(error.message) }
-    await go(data.user.id)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (error) throw error
+      await go(data.user.id)
+    } catch (err: any) {
+      setMsg(err.message || 'Login failed. Please try again.')
+      setBusy(false)
+    }
   }
 
   return (
     <div className="auth">
       <h1>Login</h1>
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <div className="pw">
-        <input type={show ? 'text' : 'password'} placeholder="Password" value={password}
-          onChange={e => setPassword(e.target.value)} />
-        <button type="button" className={show ? 'eye off' : 'eye'}
-          onClick={() => setShow(!show)} aria-label="Show or hide password" />
-      </div>
-      <button onClick={handleLogin} disabled={busy}>{busy ? 'Please wait...' : 'Login'}</button>
-      <p>{msg}</p>
+      <form onSubmit={handleLogin}>
+        <input type="email" name="email" placeholder="Email" autoComplete="username"
+          value={email} onChange={e => setEmail(e.target.value)} />
+        <div className="pw">
+          <input type={show ? 'text' : 'password'} name="password" placeholder="Password" autoComplete="current-password"
+            value={password} onChange={e => setPassword(e.target.value)} />
+          <button type="button" className={show ? 'eye off' : 'eye'}
+            onClick={() => setShow(!show)} aria-label="Show or hide password" />
+        </div>
+        <button type="submit" disabled={busy}>{busy ? 'Please wait...' : 'Login'}</button>
+      </form>
+      <p className="error">{msg}</p>
       <Link href="/forgot-password">Forgot password?</Link> | <Link href="/signup">Sign up</Link>
     </div>
   )

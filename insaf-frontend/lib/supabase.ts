@@ -28,3 +28,11 @@ export const fmtCnic = (v: string) => {
 export const cleanName = (v: string) => v.replace(/[^A-Za-z .'-]/g, '').replace(/\s{2,}/g, ' ').slice(0, 50)
 
 export const nameOk = (v: string) => /^[A-Za-z][A-Za-z .'-]{1,49}$/.test(v.trim())
+
+
+export async function logoutAndRedirect() {
+  await supabase.auth.signOut().catch(() => {})
+  sessionStorage.clear()                                   // also removes any email handed over from sign-up
+  Object.keys(localStorage).forEach(k => { if (k.startsWith('sb-')) localStorage.removeItem(k) })
+  window.location.replace('/login')                        // full reload: all form state is gone
+}

@@ -54,7 +54,7 @@ export default function ForgotPassword() {
           <button onClick={sendCode}>Send a new code</button>
         </>
       )}
-      <p>{msg}</p>
+      <p className="error">{msg}</p>
     </div>
   )
 }

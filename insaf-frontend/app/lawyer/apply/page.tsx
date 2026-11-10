@@ -13,10 +13,11 @@ export default function Apply() {
   const [cnicFile, setCnicFile] = useState<File | null>(null)
   const [app, setApp] = useState<any>(null)
   const [msg, setMsg] = useState('')
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) { window.location.href = '/login'; return }
+      if (!data.user) { window.location.replace('/login?next=lawyer'); return }
       const r = await supabase.from('lawyer_applications').select('*').eq('user_id', data.user.id).maybeSingle()
       if (r.data) {
         setApp(r.data)
@@ -39,8 +40,8 @@ export default function Apply() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !f.full_name || !f.bar_council_id || !specs.length || (!editing && (!photo || !cnicFile)))
       return setMsg('Fill all fields, pick a specialization, and add the picture and CNIC PDF.')
-    if (!/^\d{11}$/.test(f.phone)) return setMsg('Phone number must be exactly 11 digits, for example 03001234567.')
     if (!nameOk(f.full_name)) return setMsg('Name can have letters and spaces only (at least 2 letters).')
+    if (!/^\d{11}$/.test(f.phone)) return setMsg('Phone number must be exactly 11 digits, for example 03001234567.')
     if (!/^\d{5}-\d{7}-\d$/.test(f.cnic)) return setMsg('CNIC must look like 12345-1234567-1.')
     if (!f.province) return setMsg('Select the Bar Council that issued your licence.')
     if (!/^[A-Z0-9/-]{3,20}$/.test(f.bar_council_id))
@@ -69,11 +70,23 @@ export default function Apply() {
     setMsg(editing ? 'Application updated.' : 'Application sent.')
   }
 
+  if (!ready) return <div><p>Loading...</p></div>
+  if (status === 'blocked')
+    return (
+      <div>
+        <div className="titlebar">
+          <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
+          <h2>Your lawyer account is blocked.</h2>
+        </div>
+        <p>Please contact the INSAF admin for more information.</p>
+      </div>
+    )
+
   if (status === 'approved')
     return (
       <div>
         <div className="titlebar">
-          <Link href="/dashboard" className="back" aria-label="Back to dashboard">🡨</Link>
+          <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
           <h2>Your application is approved.</h2>
         </div>
         <p>You can update your phone, specializations and picture on your <Link href="/lawyer/dashboard">lawyer dashboard</Link>.</p>
@@ -83,7 +96,7 @@ export default function Apply() {
   return (
     <div>
       <div className="titlebar">
-        <Link href="/dashboard" className="back" aria-label="Back to dashboard">🡨</Link>
+        <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
         <h1>{editing ? 'Your Application' : 'Lawyer Registration'}</h1>
       </div>
       {editing && <p>Status: <b>pending</b>. You can still fix your details until the admin reviews them.</p>}

@@ -1,13 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase, pic, logoutAndRedirect } from '@/lib/supabase'
+import { supabase, pic } from '@/lib/supabase'
+import Navbar, { LAWYER_TYPES } from './Navbar'
 
-const LAWYER_TYPES = [
-  'Estate Planning Lawyer', 'Personal Injury Lawyer', 'Family Lawyer', 'Immigration Lawyer',
-  'Employment Lawyer', 'Civil Rights Lawyer', 'Criminal Defense Lawyer', 'Tax Lawyer',
-  'Real Estate Lawyer', 'Intellectual Property (IP) Lawyer', 'Corporate Lawyer',
-]
 
 // a simple line icon for each lawyer type in "Areas of law" (SVG path, 24x24 box)
 const TYPE_ICONS: Record<string, string> = {
@@ -24,14 +20,6 @@ const TYPE_ICONS: Record<string, string> = {
   'Corporate Lawyer': 'M4 21V5l8-2v18 M12 9h8v12 M2 21h20 M7 8h2 M7 12h2 M7 16h2 M15 13h2 M15 17h2',
 }
 
-// Lodge Complaint dropdown. Not built yet, so every option shows "Soon".
-const COMPLAINT_OPTIONS = ['Lodge a new complaint', 'Track previous complaint', 'How complaints work', 'Ask the AI for help']
-
-const SERVICES = [
-  ['#ai', 'Ask the AI legal assistant'],
-  ['#areas', 'Find a verified lawyer'],
-  ['#join', 'Join as a lawyer'],
-]
 
 type Lawyer = {
   user_id: string; full_name: string; specializations: string[]; services: string | null
@@ -50,10 +38,8 @@ const STEPS = [
 
 export default function LandingPage() {
   const [loggedIn, setLoggedIn] = useState(false)
-  const [menu, setMenu] = useState('')          // which navbar dropdown is open
   const [search, setSearch] = useState('')
   const [lawyers, setLawyers] = useState<Lawyer[]>([])
-  const [name, setName] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -61,14 +47,10 @@ export default function LandingPage() {
       setLoggedIn(!!user)
       // the lawyer list is only readable when logged in (Supabase rule)
       if (!user) return
-      const [p, l] = await Promise.all([
-        supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-        supabase.from('lawyer_directory')
-          .select('user_id, full_name, specializations, services, picture_path, experience_years, license_level'),
-      ])
+      const l = await supabase.from('lawyer_directory')
+        .select('user_id, full_name, specializations, services, picture_path, experience_years, license_level')
       // approved lawyers have a row in lawyer_directory. They get their own dashboard, not this user page.
       if ((l.data ?? []).some(x => x.user_id === user.id)) return window.location.replace('/lawyer/dashboard')
-      setName(p.data?.full_name || user.email || '')
       setLawyers(l.data ?? [])
     })
   }, [])
@@ -83,75 +65,15 @@ export default function LandingPage() {
 
   function pickType(type: string) {
     setSearch(type)
-    setMenu('')
   }
 
   const joinHref = loggedIn ? '/lawyer/apply' : '/login?next=lawyer'
   const findHref = loggedIn ? '#lawyers' : '/login'
   return (
     <div className="landing">
-      <header className="lp-nav">
-        <div className="lp-wrap">
-          <Link href="/" className="lp-logo"><img src="/insaf-logo.svg" alt="" />INSAF</Link>
-          <nav className="lp-menu">
-            <div className="lp-drop">
-              <button type="button" onClick={() => setMenu(menu === 'lawyers' ? '' : 'lawyers')}>Lawyers ▾</button>
-              {menu === 'lawyers' && (
-                <div className="lp-drop-list">
-                  <b>Find lawyer by type</b>
-                  {LAWYER_TYPES.map(t => <a key={t} href="#areas" onClick={() => pickType(t)}>{t}</a>)}
-                </div>
-              )}
-            </div>
-            <div className="lp-drop">
-              <button type="button" onClick={() => setMenu(menu === 'services' ? '' : 'services')}>Services ▾</button>
-              {menu === 'services' && (
-                <div className="lp-drop-list">
-                  {SERVICES.map(([href, label]) => <a key={href} href={href} onClick={() => setMenu('')}>{label}</a>)}
-                </div>
-              )}
-            </div>
-            <a href="#areas">Areas of law</a>
-            <a href="#ai">AI legal assistant <span className="lp-soon">Soon</span></a>
-            <div className="lp-drop">
-              <button type="button" onClick={() => setMenu(menu === 'complaint' ? '' : 'complaint')}>Lodge Complaint ▾</button>
-              {menu === 'complaint' && (
-                <div className="lp-drop-list">
-                  {COMPLAINT_OPTIONS.map(o => <span key={o} className="lp-drop-soon">{o} <span className="lp-soon">Soon</span></span>)}
-                </div>
-              )}
-            </div>
-            <a href="#how" className="lp-hide-medium">How it works</a>
-          </nav>
-          <div className="lp-links">
-            {loggedIn ? (
-              <div className="lp-drop">
-                <button type="button" className="lp-user" onClick={() => setMenu(menu === 'user' ? '' : 'user')}>
-                  <span className="avatar">{name[0]?.toUpperCase()}</span>{name} ▾
-                </button>
-                {menu === 'user' && (
-                  <div className="lp-drop-list lp-drop-right">
-                    <a href="#lawyers" onClick={() => setMenu('')}>Find a verified lawyer</a>
-                    <Link href="/lawyer/apply">Join as a lawyer</Link>
-                    <Link href="/dashboard/settings">Settings</Link>
-                    <Link href="/dashboard/about">About</Link>
-                    <Link href="/dashboard/help">Help</Link>
-                    <a onClick={logoutAndRedirect}>Logout</a>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <Link href={joinHref} className="lp-outline lp-hide-phone">Join as Lawyer</Link>
-                <Link href="/login">Login</Link>
-                <Link href="/signup" className="lp-btn">Sign up</Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <Navbar onPickType={pickType} />
 
-      <main onClick={() => setMenu('')}>
+      <main>
         <div className="lp-wrap">
           <section className="lp-hero">
             <div>

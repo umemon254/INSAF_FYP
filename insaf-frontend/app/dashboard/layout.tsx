@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { supabase, logoutAndRedirect } from '@/lib/supabase'
+import Navbar from '../Navbar'
 
-// Settings, About and Help pages: a card with a back arrow to the home page
+// Settings, About and Help pages: the top bar, then the page in a white card
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
 
@@ -18,12 +18,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!ready) return <div><p>Loading...</p></div>
 
   return (
-    <div className="ld info-page">
-      <div className="titlebar">
-        <Link href="/" className="back" aria-label="Back to home">←</Link>
-        <Link href="/" className="lp-logo"><img src="/insaf-logo.svg" alt="" />INSAF</Link>
+    <>
+      <Navbar />
+      <div className="ld info-page">
+        <section className="ld-card">{children}</section>
       </div>
-      <section className="ld-card">{children}</section>
-    </div>
+    </>
   )
 }

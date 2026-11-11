@@ -580,3 +580,16 @@ html[data-theme=dark] { filter: invert(1) hue-rotate(180deg); background: var(--
 html[data-theme=dark] body:has(> div.info-page) { background: var(--bg); }
 html[data-theme=dark] .info-page .titlebar .lp-logo { color: var(--blue); }
 html[data-theme=dark] img { filter: invert(1) hue-rotate(180deg); }
+
+/* ---- sticky headers on the admin and lawyer dashboards ---- */
+/* the sidebar is already sticky on computers. Now the page heading stays at the top too. */
+.shell .topbar, .shell .ldb-head {
+  position: sticky; top: 0; z-index: 10;
+  margin: -32px -32px 16px; padding: 20px 32px 14px;   /* stretch over the page padding so nothing shows beside it */
+  background: var(--bg); border-bottom: 1px solid var(--line);
+}
+/* phones: the sidebar becomes a top bar, so that bar is the sticky part instead */
+@media (max-width: 700px) {
+  .side { position: sticky; top: 0; z-index: 20; }
+  .shell .topbar, .shell .ldb-head { position: static; margin: 0 0 16px; padding: 0; border: 0; background: none; }
+}

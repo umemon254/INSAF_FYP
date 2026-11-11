@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase , passwordError} from '@/lib/supabase'
 
 export default function ForgotPassword() {
@@ -36,6 +37,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="auth">
+      <Link href="/" className="auth-brand"><img src="/insaf-logo.svg" alt="" />INSAF</Link>
       <h1>Forgot Password</h1>
       <input placeholder="Email" value={email} disabled={sent} onChange={e => setEmail(e.target.value)} />
       {!sent ? (
@@ -49,7 +51,7 @@ export default function ForgotPassword() {
             <button type="button" className={show ? 'eye off' : 'eye'}
               onClick={() => setShow(!show)} aria-label="Show or hide password" />
           </div>
-          <p className="hint">At least 8 characters, with 1 uppercase letter, 1 number and 1 symbol.</p>
+          <p className="hint">At least 8 characters, with 1 number and 1 symbol.</p>
           <button onClick={reset}>Reset password</button>
           <button onClick={sendCode}>Send a new code</button>
         </>

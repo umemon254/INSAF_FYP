@@ -1,51 +1,29 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { supabase, logoutAndRedirect } from '@/lib/supabase'
 
+// Settings, About and Help pages: a card with a back arrow to the home page
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const path = usePathname()
-  const [isLawyer, setIsLawyer] = useState(false)
-  const [open, setOpen] = useState(false)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { window.location.replace('/login'); return }
-      const r = await supabase.from('lawyer_directory').select('user_id')
-        .eq('user_id', data.session.user.id).maybeSingle()
-      setIsLawyer(!!r.data)
+    // getUser() asks Supabase, so a deleted or expired account is sent back to login
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) { logoutAndRedirect(); return }
       setReady(true)
     })
   }, [])
 
   if (!ready) return <div><p>Loading...</p></div>
 
-  const links = [
-    ['/dashboard', 'Home'],
-    ['/dashboard/settings', 'Settings'],
-    ['/dashboard/about', 'About'],
-    ['/dashboard/help', 'Help'],
-    isLawyer ? ['/lawyer/dashboard', 'My lawyer profile'] : ['/lawyer/apply', 'I am a lawyer'],
-  ]
-
   return (
-    <div className="shell">
-      <nav className={open ? 'side open' : 'side'}>
-        <div className="side-top">
-          <h3>INSAF</h3>
-          <button type="button" className="menu-btn" aria-label="Menu" onClick={() => setOpen(!open)} />
-        </div>
-        <div className="side-links">
-          {links.map(([href, label]) => (
-            <Link key={href} href={href} className={path === href ? 'on' : ''} onClick={() => setOpen(false)}>{label}</Link>
-          ))}
-          <span className="spacer" />
-          <button onClick={logoutAndRedirect}>Logout</button>
-        </div>
-      </nav>
-      <div className="main">{children}</div>
+    <div className="ld info-page">
+      <div className="titlebar">
+        <Link href="/" className="back" aria-label="Back to home">←</Link>
+        <Link href="/" className="lp-logo"><img src="/insaf-logo.svg" alt="" />INSAF</Link>
+      </div>
+      <section className="ld-card">{children}</section>
     </div>
   )
 }

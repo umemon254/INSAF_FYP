@@ -41,31 +41,45 @@ export default function Signup() {
   }
 
   return (
-    <div className="auth">
-      <h1>Sign Up</h1>
-      {!sent ? (
-        <>
-          <input placeholder="Full name" autoComplete="off" value={name} onChange={e => setName(cleanName(e.target.value))} />
-          <input type="email" name="signup-email" placeholder="Email" autoComplete="off"
-            value={email} onChange={e => setEmail(e.target.value)} />
-          <div className="pw">
-            <input type={show ? 'text' : 'password'} name="signup-password" placeholder="Password" autoComplete="new-password"
-              value={password} onChange={e => setPassword(e.target.value)} />
-            <button type="button" className={show ? 'eye off' : 'eye'}
-              onClick={() => setShow(!show)} aria-label="Show or hide password" />
-          </div>
-          <p className="hint">At least 8 characters, with 1 uppercase letter, 1 number and 1 symbol.</p>
-          <button onClick={handleSignup}>Sign Up</button>
-        </>
-      ) : (
-        <>
-          <input placeholder="Verification code from email" autoComplete="one-time-code"
-            value={code} onChange={e => setCode(e.target.value)} />
-          <button onClick={verify}>Verify and continue</button>
-        </>
-      )}
-      <p className="error">{msg}</p>
-      <Link href="/login">Already have an account? Login</Link>
+    <div className="auth auth-split">
+      <Link href="/" className="auth-brand"><img src="/insaf-logo.svg" alt="" />INSAF</Link>
+      <aside className="auth-side">
+        <img src="/insaf-logo.svg" alt="" />
+        <h2>Join INSAF</h2>
+        <p>Understand your legal rights and find the right lawyer.</p>
+        <ul>
+          <li>Lawyers checked by our admin team</li>
+          <li>Pakistani law in simple words</li>
+          <li>Free to sign up</li>
+        </ul>
+      </aside>
+      <div className="auth-form">
+        <h1>Sign Up</h1>
+        <p className="auth-sub">Create your free INSAF account.</p>
+        {!sent ? (
+          <>
+            <input placeholder="Full name" autoComplete="off" value={name} onChange={e => setName(cleanName(e.target.value))} />
+            <input type="email" name="signup-email" placeholder="Email" autoComplete="off"
+              value={email} onChange={e => setEmail(e.target.value)} />
+            <div className="pw">
+              <input type={show ? 'text' : 'password'} name="signup-password" placeholder="Password" autoComplete="new-password"
+                value={password} onChange={e => setPassword(e.target.value)} />
+              <button type="button" className={show ? 'eye off' : 'eye'}
+                onClick={() => setShow(!show)} aria-label="Show or hide password" />
+            </div>
+            <p className="hint">At least 8 characters, with 1 number and 1 symbol.</p>
+            <button onClick={handleSignup}>Sign Up</button>
+          </>
+        ) : (
+          <>
+            <input placeholder="Verification code from email" autoComplete="one-time-code"
+              value={code} onChange={e => setCode(e.target.value)} />
+            <button onClick={verify}>Verify and continue</button>
+          </>
+        )}
+        <p className="error">{msg}</p>
+        <p className="auth-links"><Link href="/login">Already have an account? Login</Link></p>
+      </div>
     </div>
   )
 }

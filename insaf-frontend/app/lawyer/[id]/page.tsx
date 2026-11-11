@@ -14,17 +14,42 @@ function Detail() {
   }, [id])
 
   return (
-    <div>
+    <div className="ld">
       <div className="titlebar">
-        <Link href="/dashboard" className="back" aria-label="Back to dashboard">🡨</Link>
-        <h1>{l ? l.full_name : 'Loading...'}</h1>
+        <Link href="/" className="back" aria-label="Back to home">←</Link>
+        <h1>Lawyer Profile</h1>
       </div>
+      {!l && <p>Loading...</p>}
       {l && (
         <>
-          {l.picture_path && <img src={pic(l.picture_path)} width={150} alt="" />}
-          <p>Email: {l.email}</p>
-          <p>Phone: {l.phone}</p>
-          <p>Specializations: {l.specializations.join(', ')}</p>
+          <section className="ld-banner">
+            {l.picture_path
+              ? <img src={pic(l.picture_path)} alt="" />
+              : <span className="ld-avatar">{l.full_name[0]}</span>}
+            <div>
+              <h2>{l.full_name}</h2>
+              <div className="ld-tags">
+                <span className="ok">Verified lawyer</span>
+                {l.license_level && <span>{l.license_level}</span>}
+                {l.experience_years != null && <span>{l.experience_years} years experience</span>}
+              </div>
+            </div>
+          </section>
+
+          <section className="ld-card profile-card">
+            <div className="ld-grid">
+              <p><small>Email</small>{l.email}</p>
+              <p><small>Phone</small>{l.phone}</p>
+              <p><small>Specializations</small>{l.specializations.join(', ')}</p>
+              {l.qualification && <p><small>Qualification</small>{l.qualification}</p>}
+              {l.services && <p className="ld-full"><small>Services</small>{l.services}</p>}
+            </div>
+            {/* booking is not built yet, so the button is disabled on purpose */}
+            <div className="ld-actions">
+              <button disabled>Book appointment</button>
+              <span className="lp-soon">Coming soon</span>
+            </div>
+          </section>
         </>
       )}
     </div>

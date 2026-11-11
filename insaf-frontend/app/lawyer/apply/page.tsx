@@ -1,13 +1,20 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase, onlyDigits, fmtCnic, cleanName, nameOk } from '@/lib/supabase'
+import { supabase, onlyDigits, fmtCnic, cleanName, nameOk, QUALIFICATIONS, LICENSE_LEVELS, splitChoice } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 const PROVINCES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad', 'Gilgit-Baltistan']
 
 export default function Apply() {
-  const [f, setF] = useState({ full_name: '', phone: '', cnic: '', province: '', bar_council_id: '' })
+  const [f, setF] = useState({
+    full_name: '', phone: '', cnic: '', province: '', bar_council_id: '',
+    experience_years: '', services: '',
+  })
+  const [qual, setQual] = useState('')
+  const [qualOther, setQualOther] = useState('')
+  const [license, setLicense] = useState('')
+  const [licenseOther, setLicenseOther] = useState('')
   const [specs, setSpecs] = useState<string[]>([])
   const [photo, setPhoto] = useState<File | null>(null)
   const [cnicFile, setCnicFile] = useState<File | null>(null)
@@ -27,9 +34,16 @@ export default function Apply() {
           cnic: r.data.cnic ?? '',
           province: r.data.province ?? '',
           bar_council_id: r.data.bar_council_id,
+          experience_years: r.data.experience_years?.toString() ?? '',
+          services: r.data.services ?? '',
         })
         setSpecs(r.data.specializations)
+        const [q, qo] = splitChoice(r.data.qualification, QUALIFICATIONS)
+        setQual(q); setQualOther(qo)
+        const [l, lo] = splitChoice(r.data.license_level, LICENSE_LEVELS)
+        setLicense(l); setLicenseOther(lo)
       }
+      setReady(true)   // show the form only after we know if the user already applied
     })
   }, [])
 
@@ -46,8 +60,20 @@ export default function Apply() {
     if (!f.province) return setMsg('Select the Bar Council that issued your licence.')
     if (!/^[A-Z0-9/-]{3,20}$/.test(f.bar_council_id))
       return setMsg('Bar Council ID can have letters, numbers, - and / only (3 to 20 characters).')
+    const qualification = qual === 'Other' ? qualOther.trim() : qual
+    const license_level = license === 'Other' ? licenseOther.trim() : license
+    if (!qual) return setMsg('Select your educational qualification.')
+    if (qualification.length < 2) return setMsg('Please specify your educational qualification.')
+    if (!license) return setMsg('Select your professional licensing status.')
+    if (license_level.length < 2) return setMsg('Please specify your professional licensing status.')
+    if (f.experience_years === '' || Number(f.experience_years) > 60) return setMsg('Experience must be between 0 and 60 years.')
+    if (f.services.trim().length < 3) return setMsg('Enter the services you offer.')
 
-    const row: any = { ...f, email: user.email, specializations: specs }
+    const row: any = {
+      ...f, email: user.email, specializations: specs,
+      qualification, license_level, services: f.services.trim(),
+      experience_years: Number(f.experience_years),
+    }
     if (photo) {
       const p = `${user.id}/${Date.now()}-pic`
       const up = await supabase.storage.from('lawyer-pictures').upload(p, photo)
@@ -75,7 +101,7 @@ export default function Apply() {
     return (
       <div>
         <div className="titlebar">
-          <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
+          <Link href="/" className="back" aria-label="Back to home">←</Link>
           <h2>Your lawyer account is blocked.</h2>
         </div>
         <p>Please contact the INSAF admin for more information.</p>
@@ -86,7 +112,7 @@ export default function Apply() {
     return (
       <div>
         <div className="titlebar">
-          <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
+          <Link href="/" className="back" aria-label="Back to home">←</Link>
           <h2>Your application is approved.</h2>
         </div>
         <p>You can update your phone, specializations and picture on your <Link href="/lawyer/dashboard">lawyer dashboard</Link>.</p>
@@ -94,45 +120,107 @@ export default function Apply() {
     )
 
   return (
-    <div>
+    <div className="ld">
       <div className="titlebar">
-        <Link href="/dashboard" className="back" aria-label="Back to dashboard">←</Link>
+        <Link href="/" className="back" aria-label="Back to home">←</Link>
         <h1>{editing ? 'Your Application' : 'Lawyer Registration'}</h1>
       </div>
-      {editing && <p>Status: <b>pending</b>. You can still fix your details until the admin reviews them.</p>}
+
+      <section className="ld-banner reg-banner">
+        <img src="/insaf-logo.svg" alt="" />
+        <div>
+          <h2>Join INSAF as a verified lawyer</h2>
+          <p>Fill in your details. Our admin team checks your Bar Council licence, then you are listed for clients.</p>
+        </div>
+      </section>
+      {editing && <p className="ld-note">Status: <b>pending</b>. You can still fix your details until the admin reviews them.</p>}
       {status === 'rejected' && (
-        <p><b>Your previous application was rejected.</b><br />Reason: {app.rejection_reason}<br />Fix the details and apply again.</p>
+        <p className="ld-msg"><b>Your previous application was rejected.</b><br />Reason: {app.rejection_reason}<br />Fix the details and apply again.</p>
       )}
 
-      <input placeholder="Full name" value={f.full_name} onChange={e => setF({ ...f, full_name: cleanName(e.target.value) })} />
-      <input placeholder="Phone number (03001234567)" inputMode="numeric" maxLength={11} value={f.phone}
-        onChange={e => setF({ ...f, phone: onlyDigits(e.target.value, 11) })} />
-      <input placeholder="CNIC number (12345-1234567-1)" inputMode="numeric" maxLength={15} value={f.cnic}
-        onChange={e => setF({ ...f, cnic: fmtCnic(e.target.value) })} />
-
-      <select value={f.province} onChange={e => setF({ ...f, province: e.target.value })}>
-        <option value="">Bar Council (province)</option>
-        {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-      </select>
-      <input placeholder="Bar Council ID (as on your licence)" value={f.bar_council_id}
-        onChange={e => setF({ ...f, bar_council_id: e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '').slice(0, 20) })} />
-
-      <p>Profile picture{editing && ' (leave empty to keep the current one)'}</p>
-      <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
-      <p>CNIC (PDF file){editing && ' (leave empty to keep the current one)'}</p>
-      <input type="file" accept="application/pdf" onChange={e => setCnicFile(e.target.files?.[0] ?? null)} />
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, margin: '10px 0' }}>
-        {SPECS.map(s => (
-          <label key={s} style={{ display: 'flex', alignItems: 'center' }}>
-            <input type="checkbox" checked={specs.includes(s)}
-              onChange={e => setSpecs(e.target.checked ? [...specs, s] : specs.filter(x => x !== s))} />{s}
+      <section className="ld-card reg-card">
+        <h2>1. Personal details</h2>
+        <div className="ld-grid">
+          <label className="ld-full">Full name
+            <input placeholder="As on your CNIC" value={f.full_name} onChange={e => setF({ ...f, full_name: cleanName(e.target.value) })} />
           </label>
-        ))}
-      </div>
+          <label>Phone number
+            <input placeholder="03001234567" inputMode="numeric" maxLength={11} value={f.phone}
+              onChange={e => setF({ ...f, phone: onlyDigits(e.target.value, 11) })} />
+          </label>
+          <label>CNIC number
+            <input placeholder="12345-1234567-1" inputMode="numeric" maxLength={15} value={f.cnic}
+              onChange={e => setF({ ...f, cnic: fmtCnic(e.target.value) })} />
+          </label>
+        </div>
 
-      <button onClick={submit}>{editing ? 'Update application' : status === 'rejected' ? 'Apply again' : 'Submit for approval'}</button>
-      <p>{msg}</p>
+        <h2>2. Licence and experience</h2>
+        <div className="ld-grid">
+          <label>Bar Council (province)
+            <select value={f.province} onChange={e => setF({ ...f, province: e.target.value })}>
+              <option value="">Select province</option>
+              {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </label>
+          <label>Bar Council ID
+            <input placeholder="As on your licence" value={f.bar_council_id}
+              onChange={e => setF({ ...f, bar_council_id: e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '').slice(0, 20) })} />
+          </label>
+          <label>Educational qualification
+            <select value={qual} onChange={e => setQual(e.target.value)}>
+              <option value="">Select qualification</option>
+              {QUALIFICATIONS.map(q => <option key={q} value={q}>{q}</option>)}
+            </select>
+            {qual === 'Other' && (
+              <input placeholder="Please specify your educational qualification" maxLength={100} value={qualOther}
+                onChange={e => setQualOther(e.target.value)} />
+            )}
+          </label>
+          <label>Professional licensing status
+            <select value={license} onChange={e => setLicense(e.target.value)}>
+              <option value="">Select licensing status</option>
+              {LICENSE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+            {license === 'Other' && (
+              <input placeholder="Please specify your professional licensing status" maxLength={100} value={licenseOther}
+                onChange={e => setLicenseOther(e.target.value)} />
+            )}
+          </label>
+          <label>Years of experience
+            <input placeholder="For example 5" inputMode="numeric" maxLength={2} value={f.experience_years}
+              onChange={e => setF({ ...f, experience_years: onlyDigits(e.target.value, 2) })} />
+          </label>
+          <label>Services
+            <input placeholder="Bail cases, divorce, property transfer" maxLength={300} value={f.services}
+              onChange={e => setF({ ...f, services: e.target.value })} />
+          </label>
+        </div>
+
+        <h2>3. Specializations</h2>
+        <div className="ld-chips">
+          {SPECS.map(s => (
+            <label key={s}>
+              <input type="checkbox" checked={specs.includes(s)}
+                onChange={e => setSpecs(e.target.checked ? [...specs, s] : specs.filter(x => x !== s))} />{s}
+            </label>
+          ))}
+        </div>
+
+        <h2>4. Documents</h2>
+        <div className="ld-grid">
+          <label>Profile picture{editing && ' (leave empty to keep the current one)'}
+            <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
+          </label>
+          <label>CNIC (PDF file){editing && ' (leave empty to keep the current one)'}
+            <input type="file" accept="application/pdf" onChange={e => setCnicFile(e.target.files?.[0] ?? null)} />
+          </label>
+        </div>
+
+        {msg && <p className={msg.startsWith('Application') ? 'ld-msg ok' : 'ld-msg'}>{msg}</p>}
+        <div className="ld-actions">
+          <button onClick={submit}>{editing ? 'Update application' : status === 'rejected' ? 'Apply again' : 'Submit for approval'}</button>
+        </div>
+      </section>
     </div>
   )
 }

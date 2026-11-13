@@ -136,7 +136,6 @@ export default function Admin() {
   const list = apps.filter(a => a.status === tab &&
     [a.full_name, a.email, a.bar_council_id].join(' ').toLowerCase().includes(q.toLowerCase()))
 
-  // numbers for the statistics chart, bars are sized against the biggest one
   const chart: [string, number, string][] = [
     ['Total users', users.length, '#1a3d6d'],
     ['Approved lawyers', count('approved'), '#2e9e5b'],
@@ -144,7 +143,6 @@ export default function Admin() {
   ]
   const chartMax = Math.max(...chart.map(c => c[1]), 1)
 
-  // donut: each status gets a slice from where the last one ended, e.g. "#2e9e5b 20% 80%"
   let sliceStart = 0
   const slices = STATUS_COLORS.map(([status, color]) => {
     const end = sliceStart + (apps.length ? count(status) / apps.length * 100 : 0)
@@ -154,7 +152,7 @@ export default function Admin() {
   })
   const donut = apps.length ? `conic-gradient(${slices.join(', ')})` : '#eef2f9'
 
-  // how many approved lawyers handle each specialization
+  //  approved lawyers handle each specialization
   const approved = apps.filter(a => a.status === 'approved')
   const specCounts: [string, number][] = SPECS.map(s => [s, approved.filter(a => (a.specializations ?? []).includes(s)).length])
   const specMax = Math.max(...specCounts.map(c => c[1]), 1)

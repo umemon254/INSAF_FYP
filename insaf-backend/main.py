@@ -12,6 +12,7 @@ GMAIL_PASS = os.environ["SMTP_PASS"]
 
 app = FastAPI()
 
+#work between request and response
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):3000",
@@ -20,7 +21,7 @@ app.add_middleware(
 )
 
 
-
+# retrieve data from supabase 
 def get(path, token):
     headers = {"apikey": ANON, "Authorization": f"Bearer {token}"}
     with urllib.request.urlopen(urllib.request.Request(URL + path, headers=headers)) as r:

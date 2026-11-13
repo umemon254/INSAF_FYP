@@ -1,24 +1,16 @@
--- INSAF database setup (Supabase).
--- This matches the live database. Run it once on a new, empty Supabase project:
--- Dashboard > SQL Editor > New query > paste > Run.
 
 -- 1. Tables
-
--- One row for every confirmed account. Passwords are not stored here,
--- Supabase Auth keeps them hashed in auth.users.
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
-  full_name text,
+  full_name text not null,
   created_at timestamptz default now()
 );
 
--- Users in this table are admins. Rows are added by hand in the SQL Editor.
 create table public.admins (
   user_id uuid primary key references auth.users(id) on delete cascade
 );
 
--- The full lawyer application, including private data (CNIC).
 create table public.lawyer_applications (
   user_id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
@@ -42,12 +34,10 @@ create table public.lawyer_applications (
   constraint app_bar_format check (bar_council_id ~ '^[A-Za-z0-9/-]{3,20}$'),
   constraint app_province_valid check (province is null or province in
     ('Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad', 'Gilgit-Baltistan')),
-  -- the same Bar Council ID can't be used twice in one province
   constraint app_bar_unique unique (province, bar_council_id)
 );
 
--- Public list of approved lawyers, without CNIC. The admin adds a row on approve
--- and deletes it on reject, block or remove.
+
 create table public.lawyer_directory (
   user_id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
@@ -102,8 +92,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if auth.uid() is null then return new; end if;   -- admin edits in the Supabase dashboard are allowed
-  new.user_id := old.user_id;
+  if auth.uid() is null then return new; end if;   -
   new.full_name := old.full_name;
   new.email := old.email;
   return new;
@@ -139,11 +128,11 @@ alter table public.admins enable row level security;
 alter table public.lawyer_applications enable row level security;
 alter table public.lawyer_directory enable row level security;
 
--- profiles: no insert or update policy, so nobody can change a profile from the app.
+-- no insert or update policy, so nobody can change a profile from the app.
 create policy "own profile or admin" on public.profiles
   for select to authenticated using (id = auth.uid() or public.is_admin());
 
--- admins: a user can only check their own row (used at login).
+-- admins: a user can only check their own row .
 create policy "check own admin row" on public.admins
   for select to authenticated using (user_id = auth.uid());
 
@@ -189,8 +178,7 @@ create policy "lawyer edits own directory row" on public.lawyer_directory
   with check (user_id = auth.uid());
 
 -- 4. Storage
--- Pictures are public so the directory can show them. CNIC files are private.
--- Every file goes in a folder named after the user id: "<user id>/<time>-pic".
+
 
 insert into storage.buckets (id, name, public) values
   ('lawyer-pictures', 'lawyer-pictures', true),
@@ -219,6 +207,3 @@ create policy "admin reads cnic" on storage.objects
 create policy "admin deletes cnic" on storage.objects
   for delete to authenticated
   using (bucket_id = 'cnic-images' and public.is_admin());
-
--- 5. Make someone admin: sign up in the app first, then run this with their email.
--- insert into public.admins (user_id) select id from auth.users where email = 'you@example.com';

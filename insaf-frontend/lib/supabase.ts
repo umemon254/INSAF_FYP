@@ -10,6 +10,7 @@ export const pic = (path: string) =>
 
 export const passwordError = (p: string) =>
   p.length < 8 ? 'Password must be at least 8 characters.'
+  : !/[A-Z]/.test(p) ? 'Password needs at least 1 uppercase letter.'
   : !/[0-9]/.test(p) ? 'Password needs at least 1 number.'
   : !/[^A-Za-z0-9]/.test(p) ? 'Password needs at least 1 symbol (for example @ # $ !).'
   : ''

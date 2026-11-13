@@ -147,7 +147,7 @@ export default function LandingPage() {
                       {l.license_level && <small>{l.license_level}</small>}
                       {l.experience_years != null && <small>{l.experience_years} years experience</small>}
                       <div className="lp-tags">{l.specializations.map(s => <span key={s}>{s}</span>)}</div>
-                      {l.services && <p>{l.services}</p>}
+                      {l.services && <p><b>Services:</b> {l.services}</p>}
                       <span className="lp-view">View profile &rarr;</span>
                     </Link>
                   ))}

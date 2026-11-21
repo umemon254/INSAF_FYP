@@ -527,7 +527,8 @@ body > div.auth-split { display: grid; grid-template-columns: 1fr 1fr; width: mi
 @media (max-width: 900px) { .lp-menu { display: none; } }
 
 /* ---- Settings, Help, About: INSAF blue band at the top with a faint logo ---- */
-body:has(> div.info-page) { position: relative; background: linear-gradient(180deg, #0f2547, #1a3d6d 220px, var(--bg) 220px); }
+/* whole page stays INSAF blue, even when the page is short */
+body:has(> div.info-page) { position: relative; min-height: 100vh; overflow-x: hidden; background: #1a3d6d linear-gradient(180deg, #0f2547, #1a3d6d 220px) no-repeat; }
 body:has(> div.info-page)::before {
   content: ''; position: absolute; top: -50px; right: -30px; width: 250px; height: 250px; z-index: -1;
   background: url(/insaf-logo.svg) center / contain no-repeat; opacity: .12; pointer-events: none;
@@ -593,3 +594,74 @@ html[data-theme=dark] img { filter: invert(1) hue-rotate(180deg); }
   .side { position: sticky; top: 0; z-index: 20; }
   .shell .topbar, .shell .ldb-head { position: static; margin: 0 0 16px; padding: 0; border: 0; background: none; }
 }
+
+/* ---- appointments ---- */
+.book-form { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.appt-list { margin-top: 12px; }
+.appt-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.appt-row:last-child { border-bottom: 0; }
+.appt-row b { display: block; }
+.appt-row small { display: block; color: #6b7587; margin-top: 2px; }
+.appt-row p { margin: 6px 0 0; font-size: 14px; color: #444; }
+.appt-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.appt-side .ap-actions { margin: 0; justify-content: flex-end; }
+.appt-side > .ghost { width: auto; margin: 0; padding: 8px 14px; }
+.appt-status { font-size: 12px; font-weight: 600; text-transform: capitalize; padding: 3px 10px; border-radius: 20px; background: #eef2f9; color: var(--blue); }
+.appt-status.pending { background: #fff3e0; color: #b36b00; }
+.appt-status.accepted { background: #e6f4ea; color: #1e7a46; }
+.appt-status.rejected, .appt-status.cancelled { background: #fdecea; color: #b3261e; }
+@media (max-width: 700px) {
+  .appt-row { flex-direction: column; }
+  .appt-side { align-items: flex-start; }
+}
+.book-hint { display: block; margin-top: -6px; font-weight: 400; color: #6b7587; text-transform: none; letter-spacing: normal; }
+.appt-row { cursor: pointer; }
+.appt-row:hover { background: #f7f9fc; }
+.appt-modal { width: min(520px, 100%); }
+.appt-modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.appt-modal-head h2 { margin: 0; }
+.appt-details { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+.appt-details p, .appt-details div { margin: 8px 0; }
+.appt-details small { display: block; font-size: 12px; font-weight: 600; color: #6b7587; text-transform: uppercase; margin-bottom: 2px; }
+.appt-file { display: block; margin: 4px 0; word-break: break-all; }
+
+/* ---- notifications: bell, dropdown and list ---- */
+.nt-bell { position: relative; }
+.nt-bell > button { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 0; padding: 0; background: #eef2f9; border-radius: 50%; }
+.nt-bell > button:hover { background: #dde5f3; }
+.nt-bell svg { width: 20px; height: 20px; fill: none; stroke: var(--blue); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nt-count { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #d9534f; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.nt-drop { position: absolute; top: 50px; right: 0; z-index: 30; width: min(360px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15, 37, 71, .18); }
+.nt-drop-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.nt-drop-head b { color: var(--blue); }
+.nt-drop-head a { font-size: 14px; text-decoration: none; }
+.nt-list .nt-item { display: block; padding: 12px 16px; white-space: normal;   /* the navbar sets nowrap on its links */
+  border-bottom: 1px solid var(--line); color: #333; text-decoration: none; }
+.nt-item:hover { background: #f7f9fc; }
+.nt-item b { display: block; font-weight: 500; font-size: 14px; }
+.nt-item small { display: block; margin-top: 3px; color: #6b7587; font-size: 12px; }
+.nt-unread { background: #eef4ff; }
+.nt-unread b { font-weight: 700; }
+.nt-reminder { background: #fff8e6; border-left: 4px solid #f0a030; }
+.nt-empty { padding: 14px 16px; color: #6b7587; }
+.nt-list .nt-all { display: block; width: auto; margin: 10px 16px 14px auto; padding: 8px 14px; }
+.ld-card .nt-list { margin-top: 12px; border-top: 1px solid var(--line); }
+.ld-card .nt-item { padding: 14px 8px; }
+@media (max-width: 700px) {
+  .nt-drop { position: fixed; top: 64px; right: 16px; }
+}
+
+/* ---- reviews and ratings ---- */
+.rv-card { margin-top: 20px; }
+.rv-stars { color: #f0a030; letter-spacing: 2px; }
+.rv-average { margin: 0 0 8px; font-size: 18px; }
+.rv-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.rv-item:last-child { border-bottom: 0; }
+.rv-item b { margin-left: 10px; }
+.rv-item small { margin-left: 10px; color: #6b7587; }
+.rv-item p { margin: 6px 0 0; color: #444; }
+.rv-form { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.modal .rv-pick button { margin: 0; padding: 0 2px; background: none; color: #ccd3df; font-size: 32px; line-height: 1; }
+.modal .rv-pick button:hover { background: none; }
+.modal .rv-pick button.on { color: #f0a030; }
+.rv-form textarea { display: block; width: 100%; min-height: 80px; margin-top: 10px; padding: 10px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; font: inherit; }

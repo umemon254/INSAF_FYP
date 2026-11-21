@@ -2,18 +2,18 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase, pic, onlyDigits, logoutAndRedirect, QUALIFICATIONS, LICENSE_LEVELS, splitChoice } from '@/lib/supabase'
+import AppointmentPopup from '../../AppointmentPopup'
+import NotificationBell from '../../Notifications'
+import ReviewList from '../../ReviewList'
+import { supabase, pic, onlyDigits, logoutAndRedirect, QUALIFICATIONS, LICENSE_LEVELS, splitChoice, showDateTime } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 
 // sidebar items that are not built yet, they show a "Soon" tag
-const SOON_ITEMS = ['My Clients', 'My Cases', 'Messages', 'Video Consultations', 'AI Legal Assistant', 'Documents', 'Reviews']
+const SOON_ITEMS = ['My Clients', 'My Cases', 'Messages', 'Video Consultations', 'AI Legal Assistant', 'Documents']
 
 // numbers from the reference dashboard that need tables we don't have yet
-const SOON_STATS = ['Total appointments', 'Upcoming appointments', 'Active cases', 'Total clients']
-
-// appointment actions we plan to add. Shown disabled until booking is built.
-const APPOINTMENT_ACTIONS = ['Accept', 'Reject', 'Reschedule', 'Cancel', 'Mark as completed', 'View client details']
+const SOON_STATS = ['Active cases', 'Total clients']
 
 export default function LawyerDashboard() {
   const router = useRouter()
@@ -28,8 +28,12 @@ export default function LawyerDashboard() {
   const [services, setServices] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [msg, setMsg] = useState('')
-  const [tab, setTab] = useState('dashboard')   // 'dashboard', 'appointments' or 'profile'
+  const [tab, setTab] = useState('dashboard')   // 'dashboard', 'appointments', 'reviews' or 'profile'
   const [menu, setMenu] = useState(false)       // sidebar open on phones
+  const [appts, setAppts] = useState<any[]>([])
+  const [clients, setClients] = useState<Record<string, any>>({})   // user id -> { full_name, email }
+  const [apptMsg, setApptMsg] = useState('')
+  const [open, setOpen] = useState<any>(null)   // appointment shown in the popup
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -43,8 +47,34 @@ export default function LawyerDashboard() {
       setLicense(l); setLicenseOther(lo)
       setExperience(r.data.experience_years?.toString() ?? '')
       setServices(r.data.services ?? '')
+      loadAppointments(data.user.id)
     })
   }, [router])
+
+  async function loadAppointments(lawyerId: string) {
+    const r = await supabase.from('appointments').select('*')
+      .eq('lawyer_id', lawyerId).order('appointment_at')
+    if (r.error) return setApptMsg(r.error.message)
+    setAppts(r.data)
+
+    // name and email of the users who booked (allowed by the "lawyer sees own clients" rule)
+    const ids = [...new Set(r.data.map(a => a.user_id))]
+    if (!ids.length) return
+    const p = await supabase.from('profiles').select('id, full_name, email').in('id', ids)
+    const found: Record<string, any> = {}
+    p.data?.forEach(c => { found[c.id] = c })
+    setClients(found)
+  }
+
+  async function setStatus(id: number, status: string) {
+    setApptMsg('')
+    const r = await supabase.from('appointments').update({ status }).eq('id', id).select()
+    if (r.error?.code === '23505') return setApptMsg('You already have an accepted appointment at this time.')
+    if (r.error) return setApptMsg(r.error.message)
+    if (!r.data?.length) return setApptMsg('Not updated. Refresh the page and try again.')
+    setAppts(appts.map(a => a.id === id ? { ...a, status } : a))
+    if (open?.id === id) setOpen({ ...open, status })
+  }
 
   async function save() {
     if (!/^\d{11}$/.test(phone)) return setMsg('Phone number must be exactly 11 digits.')
@@ -74,6 +104,43 @@ export default function LawyerDashboard() {
   }
 
   if (!me) return <p>Loading...</p>
+
+  const now = new Date()
+  const isToday = (iso: string) => new Date(iso).toDateString() === now.toDateString()
+  const isPast = (iso: string) => new Date(iso) < now
+  const pending = appts.filter(a => a.status === 'pending' && !isPast(a.appointment_at))
+  const upcoming = appts.filter(a => a.status === 'accepted' && !isPast(a.appointment_at))
+  const today = appts.filter(a => a.status === 'accepted' && isToday(a.appointment_at))
+
+  // the buttons that fit an appointment's status
+  const apptActions = (a: any) => (
+    <div className="ap-actions" onClick={e => e.stopPropagation()}>
+      {/* a pending request whose time has passed can only be rejected */}
+      {a.status === 'pending' && !isPast(a.appointment_at) && <button onClick={() => setStatus(a.id, 'accepted')}>Accept</button>}
+      {a.status === 'pending' && <button className="ghost" onClick={() => setStatus(a.id, 'rejected')}>Reject</button>}
+      {a.status === 'accepted' && isPast(a.appointment_at) && <button onClick={() => setStatus(a.id, 'completed')}>Mark as completed</button>}
+      {a.status === 'accepted' && <button className="ghost" onClick={() => setStatus(a.id, 'cancelled')}>Cancel</button>}
+    </div>
+  )
+
+  // one appointment in a list. Clicking it opens the popup with full details.
+  const apptRow = (a: any) => {
+    const client = clients[a.user_id]
+    return (
+      <div key={a.id} className="appt-row" onClick={() => setOpen(a)}>
+        <div>
+          <b>{client?.full_name || client?.email || 'Client'}</b>
+          <small>{showDateTime(a.appointment_at)} · {a.consultation_type}{client ? ` · ${client.email}` : ''}</small>
+          <p>{a.reason}</p>
+        </div>
+        <div className="appt-side">
+          <span className={`appt-status ${a.status}`}>{a.status}</span>
+          {apptActions(a)}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="shell">
       <nav className={menu ? 'side lawyer-side open' : 'side lawyer-side'}>
@@ -84,6 +151,7 @@ export default function LawyerDashboard() {
         <div className="side-links">
           <button className={tab === 'dashboard' ? 'on' : ''} onClick={() => { setTab('dashboard'); setMenu(false) }}>Dashboard</button>
           <button className={tab === 'appointments' ? 'on' : ''} onClick={() => { setTab('appointments'); setMenu(false) }}>Appointments</button>
+          <button className={tab === 'reviews' ? 'on' : ''} onClick={() => { setTab('reviews'); setMenu(false) }}>Reviews</button>
           {SOON_ITEMS.map(item => (
             <button key={item} disabled className="side-soon">{item} <span className="lp-soon">Soon</span></button>
           ))}
@@ -103,7 +171,7 @@ export default function LawyerDashboard() {
                 <p>Here is your practice overview for today.</p>
               </div>
               <div className="ldb-head-right">
-                <button className="ghost" disabled>Notifications <span className="lp-soon">Soon</span></button>
+                <NotificationBell />
                 {me.picture_path
                   ? <img src={pic(me.picture_path)} alt="" className="ldb-avatar" />
                   : <span className="avatar ldb-avatar">{me.full_name[0]}</span>}
@@ -116,6 +184,8 @@ export default function LawyerDashboard() {
               <div className="stat"><small>Experience</small><b>{me.experience_years ?? 0}</b>Years</div>
               <div className="stat"><small>Specializations</small><b>{me.specializations.length}</b>Areas of law</div>
               <div className="stat"><small>Licence</small><b className="ldb-small">{me.license_level || '-'}</b></div>
+              <div className="stat"><small>Total appointments</small><b>{appts.length}</b>All requests</div>
+              <div className="stat"><small>Upcoming appointments</small><b>{upcoming.length}</b>Accepted</div>
               {SOON_STATS.map(label => (
                 <div key={label} className="stat ldb-soon"><small>{label}</small><b>-</b><span className="lp-soon">Coming soon</span></div>
               ))}
@@ -125,11 +195,12 @@ export default function LawyerDashboard() {
               <div>
                 <section className="ld-card ldb-panel">
                   <h3>Today&apos;s Appointments</h3>
-                  <p className="ldb-empty">Coming soon. Booking is not built yet.</p>
+                  {today.length ? today.map(apptRow) : <p className="ldb-empty">No appointments today.</p>}
                 </section>
                 <section className="ld-card ldb-panel">
                   <h3>Pending Appointment Requests</h3>
-                  <p className="ldb-empty">Coming soon. Requests from users will show here.</p>
+                  {apptMsg && <p className="ld-msg">{apptMsg}</p>}
+                  {pending.length ? pending.map(apptRow) : <p className="ldb-empty">No pending requests.</p>}
                 </section>
               </div>
               <div>
@@ -152,19 +223,21 @@ export default function LawyerDashboard() {
 
         {tab === 'appointments' && (
           <>
-            <h1>Appointments <span className="lp-soon">Coming soon</span></h1>
+            <h1>Appointments</h1>
             <section className="ld-card">
-              <p>Booking is not built yet. When it is, you will manage your appointments here.</p>
-              <div className="ap-actions">
-                {APPOINTMENT_ACTIONS.map(action => <button key={action} disabled>{action}</button>)}
-              </div>
-              <label className="ap-type">Consultation type
-                <select disabled>
-                  <option>In-person</option>
-                  <option>Chat</option>
-                  <option>Video Call</option>
-                </select>
-              </label>
+              <p>All requests from users, oldest date first. Accept or reject new ones, and mark accepted ones as completed after the meeting.</p>
+              {apptMsg && <p className="ld-msg">{apptMsg}</p>}
+              {appts.length ? appts.map(apptRow) : <p className="ldb-empty">No appointment requests yet.</p>}
+            </section>
+          </>
+        )}
+
+        {tab === 'reviews' && (
+          <>
+            <h1>Reviews</h1>
+            <section className="ld-card">
+              <p>Ratings from your clients after their appointments.</p>
+              <ReviewList lawyerId={me.user_id} />
             </section>
           </>
         )}
@@ -231,6 +304,13 @@ export default function LawyerDashboard() {
           </>
         )}
       </div>
+
+      {open && (
+        <AppointmentPopup appt={open} onClose={() => setOpen(null)}
+          title={clients[open.user_id]?.full_name || 'Client'} email={clients[open.user_id]?.email}>
+          {apptActions(open)}
+        </AppointmentPopup>
+      )}
     </div>
   )
 }

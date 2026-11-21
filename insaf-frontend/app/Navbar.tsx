@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase, logoutAndRedirect } from '@/lib/supabase'
+import NotificationBell from './Notifications'
 
 export const LAWYER_TYPES = [
   'Estate Planning Lawyer', 'Personal Injury Lawyer', 'Family Lawyer', 'Immigration Lawyer',
@@ -93,6 +94,7 @@ export default function Navbar({ onPickType }: { onPickType?: (type: string) => 
         )}
 
         <div className="lp-links">
+          {loggedIn && <NotificationBell />}
           {loggedIn ? (
             <div className="lp-drop">
               <button type="button" className="lp-user" onClick={() => toggle('user')}>
@@ -104,6 +106,8 @@ export default function Navbar({ onPickType }: { onPickType?: (type: string) => 
                     ? <Link href="/lawyer/dashboard">My dashboard</Link>
                     : <>
                         <a href="/#lawyers" onClick={() => setMenu('')}>Find a verified lawyer</a>
+                        <Link href="/dashboard/appointments">My appointments</Link>
+                        <Link href="/dashboard/verify">Verify CNIC</Link>
                         <Link href="/lawyer/apply">Join as a lawyer</Link>
                       </>}
                   <Link href="/dashboard/settings">Settings</Link>

@@ -12,7 +12,7 @@ const apiBase = () =>
 
 
 const items = [['dashboard', 'Dashboard'], ['pending', 'Lawyer Requests'], ['approved', 'Approved'],
-               ['rejected', 'Rejected'], ['blocked', 'Blocked'], ['users', 'Users']]
+               ['rejected', 'Rejected'], ['blocked', 'Blocked'], ['cnic', 'User CNIC'], ['users', 'Users']]
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 const STATUS_COLORS = [['pending', '#f0a030'], ['approved', '#2e9e5b'], ['rejected', '#d9534f'], ['blocked', '#78909c']]
@@ -21,6 +21,7 @@ export default function Admin() {
   const router = useRouter()
   const [apps, setApps] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [checks, setChecks] = useState<any[]>([])   // user CNIC uploads (user_verifications)
   const [tab, setTab] = useState('dashboard')
   const [view, setView] = useState<any>(null)
   const [q, setQ] = useState('')
@@ -46,6 +47,24 @@ export default function Admin() {
     }
     setApps(list)
     setUsers((await supabase.from('profiles').select('id, email, full_name')).data ?? [])
+
+    // user CNIC files are private, so make 10 minute links for front and back
+    const cnicList = (await supabase.from('user_verifications').select('*').order('created_at', { ascending: false })).data ?? []
+    for (const v of cnicList) {
+      v.front_url = (await supabase.storage.from('cnic-images').createSignedUrl(v.front_path, 600)).data?.signedUrl
+      v.back_url = (await supabase.storage.from('cnic-images').createSignedUrl(v.back_path, 600)).data?.signedUrl
+    }
+    setChecks(cnicList)
+  }
+
+  async function decideCnic(v: any, ok: boolean) {
+    const reason = ok ? null : prompt('Reason for rejection?')
+    if (!ok && !reason) return
+    const r = await supabase.from('user_verifications')
+      .update({ status: ok ? 'approved' : 'rejected', rejection_reason: reason })
+      .eq('user_id', v.user_id).eq('status', 'pending').select()
+    if (r.error || !r.data?.length) alert(r.error?.message ?? 'This CNIC was already reviewed.')
+    load()
   }
   useEffect(() => {
     load()
@@ -132,10 +151,12 @@ export default function Admin() {
   }
 
   const count = (s: string) => apps.filter(a => a.status === s).length
+  const pendingCnic = checks.filter(v => v.status === 'pending').length
   const isList = ['pending', 'approved', 'rejected', 'blocked'].includes(tab)
   const list = apps.filter(a => a.status === tab &&
     [a.full_name, a.email, a.bar_council_id].join(' ').toLowerCase().includes(q.toLowerCase()))
 
+  // numbers for the statistics chart, bars are sized against the biggest one
   const chart: [string, number, string][] = [
     ['Total users', users.length, '#1a3d6d'],
     ['Approved lawyers', count('approved'), '#2e9e5b'],
@@ -143,6 +164,7 @@ export default function Admin() {
   ]
   const chartMax = Math.max(...chart.map(c => c[1]), 1)
 
+  // donut: each status gets a slice from where the last one ended, e.g. "#2e9e5b 20% 80%"
   let sliceStart = 0
   const slices = STATUS_COLORS.map(([status, color]) => {
     const end = sliceStart + (apps.length ? count(status) / apps.length * 100 : 0)
@@ -152,7 +174,7 @@ export default function Admin() {
   })
   const donut = apps.length ? `conic-gradient(${slices.join(', ')})` : '#eef2f9'
 
-  //  approved lawyers handle each specialization
+  // how many approved lawyers handle each specialization
   const approved = apps.filter(a => a.status === 'approved')
   const specCounts: [string, number][] = SPECS.map(s => [s, approved.filter(a => (a.specializations ?? []).includes(s)).length])
   const specMax = Math.max(...specCounts.map(c => c[1]), 1)
@@ -169,6 +191,7 @@ export default function Admin() {
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMenu(false) }}>
               {label}
               {k === 'pending' && count('pending') > 0 && <span className="badge pending" style={{ marginLeft: 8 }}>{count('pending')}</span>}
+              {k === 'cnic' && pendingCnic > 0 && <span className="badge pending" style={{ marginLeft: 8 }}>{pendingCnic}</span>}
             </button>
           ))}
           <span className="spacer" />
@@ -274,6 +297,27 @@ export default function Admin() {
             <button onClick={() => setView(a)}>View</button>
           </div>
         ))}
+
+        {tab === 'cnic' && checks.length === 0 && <p>No users have uploaded a CNIC yet.</p>}
+        {tab === 'cnic' && checks.map(v => {
+          const u = users.find(x => x.id === v.user_id)
+          return (
+            <div key={v.user_id} className="row">
+              <div className="grow">
+                <b>{u?.full_name || '-'}</b> <span className={`badge ${v.status}`}>{v.status}</span><br />
+                {u?.email}<br />
+                CNIC: {v.cnic} · <a href={v.front_url} target="_blank" rel="noreferrer">Front</a> · <a href={v.back_url} target="_blank" rel="noreferrer">Back</a>
+                {v.rejection_reason && <><br />Reason: {v.rejection_reason}</>}
+              </div>
+              {v.status === 'pending' && (
+                <>
+                  <button onClick={() => decideCnic(v, true)}>Approve</button>
+                  <button className="ghost" onClick={() => decideCnic(v, false)}>Reject</button>
+                </>
+              )}
+            </div>
+          )
+        })}
 
         {tab === 'users' && users.map(u => (
           <div key={u.id} className="row">

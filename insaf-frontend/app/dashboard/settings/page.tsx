@@ -80,11 +80,10 @@ export default function Settings() {
           <span className={dark ? 'st-switch on' : 'st-switch'} />
         </button>
 
-        <div className="st-row st-off">
+        <Link href="/dashboard/notifications" className="st-row">
           <Icon d={ICONS.bell} />
-          <span><b>Notifications</b><small>Email and app alerts</small></span>
-          <span className="lp-soon">Soon</span>
-        </div>
+          <span><b>Notifications</b><small>Appointment updates and reminders</small></span>
+        </Link>
 
         <div className="st-row st-off">
           <Icon d={ICONS.globe} />

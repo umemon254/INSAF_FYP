@@ -47,6 +47,9 @@ export default function LandingPage() {
       setLoggedIn(!!user)
       // the lawyer list is only readable when logged in (Supabase rule)
       if (!user) return
+      // admins have a row in admins. They stay on the admin panel until they log out.
+      const admin = await supabase.from('admins').select('user_id').eq('user_id', user.id).maybeSingle()
+      if (admin.data) return window.location.replace('/admin')
       const l = await supabase.from('lawyer_directory')
         .select('user_id, full_name, specializations, services, picture_path, experience_years, license_level')
       // approved lawyers have a row in lawyer_directory. They get their own dashboard, not this user page.
@@ -147,7 +150,7 @@ export default function LandingPage() {
                       {l.license_level && <small>{l.license_level}</small>}
                       {l.experience_years != null && <small>{l.experience_years} years experience</small>}
                       <div className="lp-tags">{l.specializations.map(s => <span key={s}>{s}</span>)}</div>
-                      {l.services && <p><b>Services:</b> {l.services}</p>}
+                      {l.services && <p>{l.services}</p>}
                       <span className="lp-view">View profile &rarr;</span>
                     </Link>
                   ))}

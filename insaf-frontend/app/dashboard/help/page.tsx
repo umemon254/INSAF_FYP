@@ -6,7 +6,8 @@ const FAQS = [
   ['My lawyer application was rejected. What now?', 'The email tells you the reason. Fix the details and apply again from "Join as a lawyer".'],
   ['How do I change my name?', 'Email the admin from the email you signed up with. You can find the address in Settings and below.'],
   ['I forgot my password.', 'Click "Forgot password?" on the login page. We send a code to your email, then you can set a new password.'],
-  ['Can I book an appointment or lodge a complaint?', 'Not yet. Appointments, complaints and the AI legal assistant are coming soon.'],
+  ['How do I book an appointment?', 'First verify your CNIC once from "Verify CNIC" in your menu. After the admin approves it, open a lawyer\'s profile and click "Book appointment". Fill in the date, time, type, case type, phone and a short reason, and add evidence files if you have them. The lawyer accepts or rejects it, and you can see the status in "My appointments" in your menu.'],
+  ['Can I lodge a complaint?', 'Not yet. Complaints and the AI legal assistant are coming soon.'],
   ['Is INSAF legal advice?', 'No. INSAF gives general legal information. For your own case, please talk to a qualified lawyer.'],
   ['Is my data safe?', 'Your password is stored securely by Supabase. CNIC images are private and only the admin can open them.'],
 ]

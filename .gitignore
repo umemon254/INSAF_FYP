@@ -1,0 +1,23 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets (never commit these)
+.env
+.env.*
+*.pem
+*.key
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

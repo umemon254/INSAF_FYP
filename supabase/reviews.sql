@@ -39,7 +39,7 @@ alter table public.reviews enable row level security;
 
 drop policy if exists "authenticated users read reviews" on public.reviews;
 create policy "authenticated users read reviews"
-  on public.reviews for select to authenticated using (true);
+  on public.reviews for select to anon, authenticated using (true);
 
 drop policy if exists "client reviews own completed appointment" on public.reviews;
 create policy "client reviews own completed appointment"
@@ -56,5 +56,6 @@ create policy "client reviews own completed appointment"
   );
 
 revoke all on public.reviews from anon, authenticated;
-grant select, insert on public.reviews to authenticated;
+grant select on public.reviews to anon, authenticated;
+grant insert on public.reviews to authenticated;
 grant usage, select on sequence public.reviews_id_seq to authenticated;

@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase, pic, CONSULTATION_TYPES, CASE_TYPES } from '@/lib/supabase'
+import ReviewList from '../../ReviewList'
 
 function Detail() {
   const { id } = useParams<{ id: string }>()
@@ -157,6 +158,11 @@ function Detail() {
                   </>
                 : <button onClick={openForm}>Book appointment</button>}
             </div>
+          </section>
+
+          <section className="ld-card profile-card">
+            <h2>Client reviews</h2>
+            <ReviewList lawyerId={id} />
           </section>
         </>
       )}

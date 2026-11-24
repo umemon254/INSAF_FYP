@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppointmentPopup from '../../AppointmentPopup'
 import ReviewList from '../../ReviewList'
+import NotificationBell from '../../Notifications'
 import { supabase, pic, onlyDigits, logoutAndRedirect, QUALIFICATIONS, LICENSE_LEVELS, splitChoice, showDateTime, fileError } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
@@ -143,7 +144,7 @@ export default function LawyerDashboard() {
         {tab === 'dashboard' && (
           <>
             <div className="ldb-head"><div><h1>Welcome back, Adv. {me.full_name}</h1><p>Here is your practice overview for today.</p></div>
-              <div className="ldb-head-right"><button className="ghost" disabled>Notifications <span className="lp-soon">Soon</span></button>
+              <div className="ldb-head-right"><NotificationBell />
                 {me.picture_path ? <img src={pic(me.picture_path)} alt="" className="ldb-avatar" /> : <span className="avatar ldb-avatar">{me.full_name[0]}</span>}
               </div>
             </div>

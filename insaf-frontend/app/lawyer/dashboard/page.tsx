@@ -3,14 +3,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppointmentPopup from '../../AppointmentPopup'
+import ReviewList from '../../ReviewList'
 import { supabase, pic, onlyDigits, logoutAndRedirect, QUALIFICATIONS, LICENSE_LEVELS, splitChoice, showDateTime, fileError } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
-
-// sidebar items that are not built yet, they show a "Soon" tag
-const SOON_ITEMS = ['My Clients', 'My Cases', 'Messages', 'Video Consultations', 'AI Legal Assistant', 'Documents', 'Reviews']
-
-// numbers from the reference dashboard that need tables we don't have yet
+const SOON_ITEMS = ['My Clients', 'My Cases', 'Messages', 'Video Consultations', 'AI Legal Assistant', 'Documents']
 const SOON_STATS = ['Active cases', 'Total clients']
 
 export default function LawyerDashboard() {
@@ -26,12 +23,12 @@ export default function LawyerDashboard() {
   const [services, setServices] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [msg, setMsg] = useState('')
-  const [tab, setTab] = useState('dashboard')   // 'dashboard', 'appointments' or 'profile'
-  const [menu, setMenu] = useState(false)       // sidebar open on phones
+  const [tab, setTab] = useState('dashboard')
+  const [menu, setMenu] = useState(false)
   const [appts, setAppts] = useState<any[]>([])
-  const [clients, setClients] = useState<Record<string, any>>({})   // user id -> { full_name, email }
+  const [clients, setClients] = useState<Record<string, any>>({})
   const [apptMsg, setApptMsg] = useState('')
-  const [open, setOpen] = useState<any>(null)   // appointment shown in the popup
+  const [open, setOpen] = useState<any>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -54,8 +51,6 @@ export default function LawyerDashboard() {
       .eq('lawyer_id', lawyerId).order('appointment_at')
     if (r.error) return setApptMsg(r.error.message)
     setAppts(r.data)
-
-    // name and email of the users who booked (allowed by the "lawyer sees own clients" rule)
     const ids = [...new Set(r.data.map(a => a.user_id))]
     if (!ids.length) return
     const p = await supabase.from('profiles').select('id, full_name, email').in('id', ids)
@@ -67,7 +62,6 @@ export default function LawyerDashboard() {
   async function setStatus(id: number, status: string) {
     setApptMsg('')
     const r = await supabase.from('appointments').update({ status }).eq('id', id).select()
-    // 23505 = same exact time, 42501 = blocked by the 1 hour rule in the database
     if (r.error?.code === '23505' || r.error?.code === '42501') return setApptMsg('You already have an accepted appointment within 1 hour of this time.')
     if (r.error) return setApptMsg(r.error.message)
     if (!r.data?.length) return setApptMsg('Not updated. Refresh the page and try again.')
@@ -86,10 +80,7 @@ export default function LawyerDashboard() {
     if (license_level.length < 2) return setMsg('Please specify your professional licensing status.')
     if (experience === '' || Number(experience) > 60) return setMsg('Experience must be between 0 and 60 years.')
     if (services.trim().length < 3) return setMsg('Enter the services you offer.')
-    const row: any = {
-      phone, specializations: specs,
-      qualification, license_level, experience_years: Number(experience), services: services.trim(),
-    }
+    const row: any = { phone, specializations: specs, qualification, license_level, experience_years: Number(experience), services: services.trim() }
     if (photo && fileError(photo, false)) return setMsg(fileError(photo, false))
     if (photo) {
       const p = `${me.user_id}/${Date.now()}-pic`
@@ -111,34 +102,22 @@ export default function LawyerDashboard() {
   const pending = appts.filter(a => a.status === 'pending' && !isPast(a.appointment_at))
   const upcoming = appts.filter(a => a.status === 'accepted' && !isPast(a.appointment_at))
   const today = appts.filter(a => a.status === 'accepted' && isToday(a.appointment_at))
-
-  // the buttons that fit an appointment's status
   const apptActions = (a: any) => (
     <div className="ap-actions" onClick={e => e.stopPropagation()}>
-      {/* a pending request whose time has passed can only be rejected */}
       {a.status === 'pending' && !isPast(a.appointment_at) && <button onClick={() => setStatus(a.id, 'accepted')}>Accept</button>}
       {a.status === 'pending' && <button className="ghost" onClick={() => setStatus(a.id, 'rejected')}>Reject</button>}
       {a.status === 'accepted' && isPast(a.appointment_at) && <button onClick={() => setStatus(a.id, 'completed')}>Mark as completed</button>}
       {a.status === 'accepted' && <button className="ghost" onClick={() => setStatus(a.id, 'cancelled')}>Cancel</button>}
     </div>
   )
-
-  // one appointment in a list. Clicking it opens the popup with full details.
   const apptRow = (a: any) => {
     const client = clients[a.user_id]
-    return (
-      <div key={a.id} className="appt-row" onClick={() => setOpen(a)}>
-        <div>
-          <b>{client?.full_name || client?.email || 'Client'}</b>
-          <small>{showDateTime(a.appointment_at)} · {a.consultation_type}{client ? ` · ${client.email}` : ''}</small>
-          <p>{a.reason}</p>
-        </div>
-        <div className="appt-side">
-          <span className={`appt-status ${a.status}`}>{a.status}</span>
-          {apptActions(a)}
-        </div>
+    return <div key={a.id} className="appt-row" onClick={() => setOpen(a)}>
+      <div><b>{client?.full_name || client?.email || 'Client'}</b>
+        <small>{showDateTime(a.appointment_at)} · {a.consultation_type}{client ? ` · ${client.email}` : ''}</small><p>{a.reason}</p>
       </div>
-    )
+      <div className="appt-side"><span className={`appt-status ${a.status}`}>{a.status}</span>{apptActions(a)}</div>
+    </div>
   }
 
   return (
@@ -151,9 +130,8 @@ export default function LawyerDashboard() {
         <div className="side-links">
           <button className={tab === 'dashboard' ? 'on' : ''} onClick={() => { setTab('dashboard'); setMenu(false) }}>Dashboard</button>
           <button className={tab === 'appointments' ? 'on' : ''} onClick={() => { setTab('appointments'); setMenu(false) }}>Appointments</button>
-          {SOON_ITEMS.map(item => (
-            <button key={item} disabled className="side-soon">{item} <span className="lp-soon">Soon</span></button>
-          ))}
+          {SOON_ITEMS.map(item => <button key={item} disabled className="side-soon">{item} <span className="lp-soon">Soon</span></button>)}
+          <button className={tab === 'reviews' ? 'on' : ''} onClick={() => { setTab('reviews'); setMenu(false) }}>Reviews</button>
           <button className={tab === 'profile' ? 'on' : ''} onClick={() => { setTab('profile'); setMenu(false) }}>My Profile</button>
           <Link href="/dashboard/settings">Settings</Link>
           <span className="spacer" />
@@ -164,142 +142,57 @@ export default function LawyerDashboard() {
       <div className="main">
         {tab === 'dashboard' && (
           <>
-            <div className="ldb-head">
-              <div>
-                <h1>Welcome back, Adv. {me.full_name}</h1>
-                <p>Here is your practice overview for today.</p>
-              </div>
-              <div className="ldb-head-right">
-                <button className="ghost" disabled>Notifications <span className="lp-soon">Soon</span></button>
-                {me.picture_path
-                  ? <img src={pic(me.picture_path)} alt="" className="ldb-avatar" />
-                  : <span className="avatar ldb-avatar">{me.full_name[0]}</span>}
+            <div className="ldb-head"><div><h1>Welcome back, Adv. {me.full_name}</h1><p>Here is your practice overview for today.</p></div>
+              <div className="ldb-head-right"><button className="ghost" disabled>Notifications <span className="lp-soon">Soon</span></button>
+                {me.picture_path ? <img src={pic(me.picture_path)} alt="" className="ldb-avatar" /> : <span className="avatar ldb-avatar">{me.full_name[0]}</span>}
               </div>
             </div>
-
             <div className="ldb-stats">
-              {/* real numbers from your lawyer_directory row */}
               <div className="stat"><small>Profile status</small><b>Verified</b>Approved by admin</div>
               <div className="stat"><small>Experience</small><b>{me.experience_years ?? 0}</b>Years</div>
               <div className="stat"><small>Specializations</small><b>{me.specializations.length}</b>Areas of law</div>
               <div className="stat"><small>Licence</small><b className="ldb-small">{me.license_level || '-'}</b></div>
               <div className="stat"><small>Total appointments</small><b>{appts.length}</b>All requests</div>
               <div className="stat"><small>Upcoming appointments</small><b>{upcoming.length}</b>Accepted</div>
-              {SOON_STATS.map(label => (
-                <div key={label} className="stat ldb-soon"><small>{label}</small><b>-</b><span className="lp-soon">Coming soon</span></div>
-              ))}
+              {SOON_STATS.map(label => <div key={label} className="stat ldb-soon"><small>{label}</small><b>-</b><span className="lp-soon">Coming soon</span></div>)}
             </div>
-
             <div className="ldb-grid">
               <div>
-                <section className="ld-card ldb-panel">
-                  <h3>Today&apos;s Appointments</h3>
-                  {today.length ? today.map(apptRow) : <p className="ldb-empty">No appointments today.</p>}
-                </section>
-                <section className="ld-card ldb-panel">
-                  <h3>Pending Appointment Requests</h3>
-                  {apptMsg && <p className="ld-msg">{apptMsg}</p>}
-                  {pending.length ? pending.map(apptRow) : <p className="ldb-empty">No pending requests.</p>}
-                </section>
+                <section className="ld-card ldb-panel"><h3>Today&apos;s Appointments</h3>{today.length ? today.map(apptRow) : <p className="ldb-empty">No appointments today.</p>}</section>
+                <section className="ld-card ldb-panel"><h3>Pending Appointment Requests</h3>{apptMsg && <p className="ld-msg">{apptMsg}</p>}{pending.length ? pending.map(apptRow) : <p className="ldb-empty">No pending requests.</p>}</section>
               </div>
               <div>
-                <section className="ld-card ldb-panel">
-                  <h3>My Profile</h3>
-                  <p><b>{me.full_name}</b><br />{me.email}<br />{me.phone}</p>
-                  <div className="ld-tags ldb-tags">
-                    {me.specializations.map((s: string) => <span key={s}>{s}</span>)}
-                  </div>
+                <section className="ld-card ldb-panel"><h3>My Profile</h3><p><b>{me.full_name}</b><br />{me.email}<br />{me.phone}</p>
+                  <div className="ld-tags ldb-tags">{me.specializations.map((s: string) => <span key={s}>{s}</span>)}</div>
                   <button className="ldb-btn" onClick={() => setTab('profile')}>Edit profile</button>
                 </section>
-                <section className="ld-card ldb-panel">
-                  <h3>Recent Clients</h3>
-                  <p className="ldb-empty">Coming soon.</p>
-                </section>
+                <section className="ld-card ldb-panel"><h3>Recent Clients</h3><p className="ldb-empty">Coming soon.</p></section>
               </div>
             </div>
           </>
         )}
-
-        {tab === 'appointments' && (
-          <>
-            <h1>Appointments</h1>
-            <section className="ld-card">
-              <p>All requests from users, oldest date first. Accept or reject new ones, and mark accepted ones as completed after the meeting.</p>
-              {apptMsg && <p className="ld-msg">{apptMsg}</p>}
-              {appts.length ? appts.map(apptRow) : <p className="ldb-empty">No appointment requests yet.</p>}
-            </section>
-          </>
-        )}
-
+        {tab === 'appointments' && <><h1>Appointments</h1><section className="ld-card"><p>All requests from users, oldest date first. Accept or reject new ones, and mark accepted ones as completed after the meeting.</p>
+          {apptMsg && <p className="ld-msg">{apptMsg}</p>}{appts.length ? appts.map(apptRow) : <p className="ldb-empty">No appointment requests yet.</p>}</section></>}
+        {tab === 'reviews' && <><h1>Client reviews</h1><section className="ld-card"><ReviewList lawyerId={me.user_id} /></section></>}
         {tab === 'profile' && (
           <>
-            <h1>My Profile</h1>
-            <p className="ld-note">Name, email and Bar Council ID cannot be changed here. Email the admin for a correction.</p>
-          <section className="ld-card">
-            <h2>Update your profile</h2>
-            <div className="ld-grid">
-              <label>Phone number
-                <input placeholder="03001234567" inputMode="numeric" maxLength={11} value={phone}
-                  onChange={e => setPhone(onlyDigits(e.target.value, 11))} />
-              </label>
-              <label>Years of experience
-                <input placeholder="Years of experience" inputMode="numeric" maxLength={2} value={experience}
-                  onChange={e => setExperience(onlyDigits(e.target.value, 2))} />
-              </label>
-              <label>Educational qualification
-                <select value={qual} onChange={e => setQual(e.target.value)}>
-                  <option value="">Educational qualification</option>
-                  {QUALIFICATIONS.map(q => <option key={q} value={q}>{q}</option>)}
-                </select>
-                {qual === 'Other' && (
-                  <input placeholder="Please specify your educational qualification" maxLength={100} value={qualOther}
-                    onChange={e => setQualOther(e.target.value)} />
-                )}
-              </label>
-              <label>Professional licensing status
-                <select value={license} onChange={e => setLicense(e.target.value)}>
-                  <option value="">Professional licensing status</option>
-                  {LICENSE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                {license === 'Other' && (
-                  <input placeholder="Please specify your professional licensing status" maxLength={100} value={licenseOther}
-                    onChange={e => setLicenseOther(e.target.value)} />
-                )}
-              </label>
-              <label className="ld-full">Services
-                <input placeholder="For example bail cases, divorce, property transfer" maxLength={300} value={services}
-                  onChange={e => setServices(e.target.value)} />
-              </label>
-              <label className="ld-full">New profile picture (optional)
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
-              </label>
+            <h1>My Profile</h1><p className="ld-note">Name, email and Bar Council ID cannot be changed here. Email the admin for a correction.</p>
+            <section className="ld-card"><h2>Update your profile</h2><div className="ld-grid">
+              <label>Phone number<input placeholder="03001234567" inputMode="numeric" maxLength={11} value={phone} onChange={e => setPhone(onlyDigits(e.target.value, 11))} /></label>
+              <label>Years of experience<input placeholder="Years of experience" inputMode="numeric" maxLength={2} value={experience} onChange={e => setExperience(onlyDigits(e.target.value, 2))} /></label>
+              <label>Educational qualification<select value={qual} onChange={e => setQual(e.target.value)}><option value="">Educational qualification</option>{QUALIFICATIONS.map(q => <option key={q} value={q}>{q}</option>)}</select>
+                {qual === 'Other' && <input placeholder="Please specify your educational qualification" maxLength={100} value={qualOther} onChange={e => setQualOther(e.target.value)} />}</label>
+              <label>Professional licensing status<select value={license} onChange={e => setLicense(e.target.value)}><option value="">Professional licensing status</option>{LICENSE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}</select>
+                {license === 'Other' && <input placeholder="Please specify your professional licensing status" maxLength={100} value={licenseOther} onChange={e => setLicenseOther(e.target.value)} />}</label>
+              <label className="ld-full">Services<input placeholder="For example bail cases, divorce, property transfer" maxLength={300} value={services} onChange={e => setServices(e.target.value)} /></label>
+              <label className="ld-full">New profile picture (optional)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setPhoto(e.target.files?.[0] ?? null)} /></label>
             </div>
-
-            <p className="ld-label">Specializations</p>
-            <div className="ld-chips">
-              {SPECS.map(s => (
-                <label key={s}>
-                  <input type="checkbox" checked={specs.includes(s)}
-                    onChange={e => setSpecs(e.target.checked ? [...specs, s] : specs.filter(x => x !== s))} />{s}
-                </label>
-              ))}
-            </div>
-
-            {msg && <p className={msg === 'Saved.' ? 'ld-msg ok' : 'ld-msg'}>{msg}</p>}
-            <div className="ld-actions">
-              <button onClick={save}>Save changes</button>
-            </div>
-          </section>
+            <p className="ld-label">Specializations</p><div className="ld-chips">{SPECS.map(s => <label key={s}><input type="checkbox" checked={specs.includes(s)} onChange={e => setSpecs(e.target.checked ? [...specs, s] : specs.filter(x => x !== s))} />{s}</label>)}</div>
+            {msg && <p className={msg === 'Saved.' ? 'ld-msg ok' : 'ld-msg'}>{msg}</p>}<div className="ld-actions"><button onClick={save}>Save changes</button></div></section>
           </>
         )}
       </div>
-
-      {open && (
-        <AppointmentPopup appt={open} onClose={() => setOpen(null)}
-          title={clients[open.user_id]?.full_name || 'Client'} email={clients[open.user_id]?.email}>
-          {apptActions(open)}
-        </AppointmentPopup>
-      )}
+      {open && <AppointmentPopup appt={open} onClose={() => setOpen(null)} title={clients[open.user_id]?.full_name || 'Client'} email={clients[open.user_id]?.email}>{apptActions(open)}</AppointmentPopup>}
     </div>
   )
 }

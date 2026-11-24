@@ -610,11 +610,11 @@ html[data-theme=dark] img { filter: invert(1) hue-rotate(180deg); }
 .appt-status.pending { background: #fff3e0; color: #b36b00; }
 .appt-status.accepted { background: #e6f4ea; color: #1e7a46; }
 .appt-status.rejected, .appt-status.cancelled { background: #fdecea; color: #b3261e; }
+.appt-status.expired { background: #eceff1; color: #546e7a; }
 @media (max-width: 700px) {
   .appt-row { flex-direction: column; }
   .appt-side { align-items: flex-start; }
 }
-.book-hint { display: block; margin-top: -6px; font-weight: 400; color: #6b7587; text-transform: none; letter-spacing: normal; }
 .appt-row { cursor: pointer; }
 .appt-row:hover { background: #f7f9fc; }
 .appt-modal { width: min(520px, 100%); }
@@ -623,45 +623,5 @@ html[data-theme=dark] img { filter: invert(1) hue-rotate(180deg); }
 .appt-details { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
 .appt-details p, .appt-details div { margin: 8px 0; }
 .appt-details small { display: block; font-size: 12px; font-weight: 600; color: #6b7587; text-transform: uppercase; margin-bottom: 2px; }
-.appt-file { display: block; margin: 4px 0; word-break: break-all; }
-
-/* ---- notifications: bell, dropdown and list ---- */
-.nt-bell { position: relative; }
-.nt-bell > button { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 0; padding: 0; background: #eef2f9; border-radius: 50%; }
-.nt-bell > button:hover { background: #dde5f3; }
-.nt-bell svg { width: 20px; height: 20px; fill: none; stroke: var(--blue); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.nt-count { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #d9534f; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
-.nt-drop { position: absolute; top: 50px; right: 0; z-index: 30; width: min(360px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(15, 37, 71, .18); }
-.nt-drop-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
-.nt-drop-head b { color: var(--blue); }
-.nt-drop-head a { font-size: 14px; text-decoration: none; }
-.nt-list .nt-item { display: block; padding: 12px 16px; white-space: normal;   /* the navbar sets nowrap on its links */
-  border-bottom: 1px solid var(--line); color: #333; text-decoration: none; }
-.nt-item:hover { background: #f7f9fc; }
-.nt-item b { display: block; font-weight: 500; font-size: 14px; }
-.nt-item small { display: block; margin-top: 3px; color: #6b7587; font-size: 12px; }
-.nt-unread { background: #eef4ff; }
-.nt-unread b { font-weight: 700; }
-.nt-reminder { background: #fff8e6; border-left: 4px solid #f0a030; }
-.nt-empty { padding: 14px 16px; color: #6b7587; }
-.nt-list .nt-all { display: block; width: auto; margin: 10px 16px 14px auto; padding: 8px 14px; }
-.ld-card .nt-list { margin-top: 12px; border-top: 1px solid var(--line); }
-.ld-card .nt-item { padding: 14px 8px; }
-@media (max-width: 700px) {
-  .nt-drop { position: fixed; top: 64px; right: 16px; }
-}
-
-/* ---- reviews and ratings ---- */
-.rv-card { margin-top: 20px; }
-.rv-stars { color: #f0a030; letter-spacing: 2px; }
-.rv-average { margin: 0 0 8px; font-size: 18px; }
-.rv-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
-.rv-item:last-child { border-bottom: 0; }
-.rv-item b { margin-left: 10px; }
-.rv-item small { margin-left: 10px; color: #6b7587; }
-.rv-item p { margin: 6px 0 0; color: #444; }
-.rv-form { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
-.modal .rv-pick button { margin: 0; padding: 0 2px; background: none; color: #ccd3df; font-size: 32px; line-height: 1; }
-.modal .rv-pick button:hover { background: none; }
-.modal .rv-pick button.on { color: #f0a030; }
-.rv-form textarea { display: block; width: 100%; min-height: 80px; margin-top: 10px; padding: 10px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.book-rules { margin: 4px 0 0; padding: 12px 12px 12px 30px; background: #f7f9fc; border-radius: 10px; font-size: 13px; color: #4a5568; }
+.book-rules li { margin: 3px 0; }

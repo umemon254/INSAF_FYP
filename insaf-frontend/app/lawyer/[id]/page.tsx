@@ -35,16 +35,24 @@ function Detail() {
     setBooking(true)
   }
 
-  // dates allowed in the picker: tomorrow up to 60 days ahead
+  // dates allowed in the picker: today up to 60 days ahead
   const dayString = (daysAhead: number) => {
     const d = new Date()
     d.setDate(d.getDate() + daysAhead)
     return d.toLocaleDateString('en-CA')   // gives YYYY-MM-DD in local time
   }
 
+  // the earliest time a user can book is 1 hour from now
+  const soonest = new Date(Date.now() + 60 * 60 * 1000)
+  const soonestDate = soonest.toLocaleDateString('en-CA')
+  const soonestTime = soonest.toTimeString().slice(0, 5)   // HH:MM in local time
+  const soonestLabel = soonest.toLocaleTimeString('en-PK', { hour: 'numeric', minute: '2-digit' })
+
   async function book() {
     if (!date || !time) return setMsg('Pick a date and time.')
-    if (date < dayString(1) || date > dayString(60)) return setMsg('Pick a date from tomorrow up to 60 days ahead.')
+    if (date < soonestDate || date > dayString(60)) return setMsg('Pick a date from today up to 60 days ahead.')
+    const when = new Date(`${date}T${time}`)
+    if (when < soonest) return setMsg(`Pick a time at least 1 hour from now (${soonestLabel} or later).`)
     if (!caseType) return setMsg('Select the case type.')
     if (reason.trim().length < 3) return setMsg('Write a short reason for the appointment.')
 
@@ -54,10 +62,14 @@ function Detail() {
     if (!data.user) { setBusy(false); return setMsg('Please log in again.') }
     if (data.user.id === id) { setBusy(false); return setMsg('You cannot book an appointment with yourself.') }
 
+    // is the lawyer already booked within an hour of this time?
+    const free = await supabase.rpc('slot_is_free', { p_lawyer: id, p_time: when.toISOString() })
+    if (free.data === false) { setBusy(false); return setMsg('The lawyer is already booked near this time. Please pick another time.') }
+
     const r = await supabase.from('appointments').insert({
       user_id: data.user.id,
       lawyer_id: id,
-      appointment_at: new Date(`${date}T${time}`).toISOString(),   // local time saved as UTC
+      appointment_at: when.toISOString(),   // local time saved as UTC
       consultation_type: type,
       reason: reason.trim(),
       case_type: caseType,   // phone and city are copied from the CNIC row by the database
@@ -103,10 +115,10 @@ function Detail() {
             {booking && (
               <div className="ld-grid book-form">
                 <label>Date
-                  <input type="date" min={dayString(1)} max={dayString(60)} value={date} onChange={e => setDate(e.target.value)} />
+                  <input type="date" min={soonestDate} max={dayString(60)} value={date} onChange={e => setDate(e.target.value)} />
                 </label>
-                <label>Time
-                  <input type="time" value={time} onChange={e => setTime(e.target.value)} />
+                <label>Time{date === soonestDate && ` (from ${soonestLabel})`}
+                  <input type="time" min={date === soonestDate ? soonestTime : undefined} value={time} onChange={e => setTime(e.target.value)} />
                 </label>
                 <label>Consultation type
                   <select value={type} onChange={e => setType(e.target.value)}>
@@ -123,6 +135,10 @@ function Detail() {
                   <input placeholder="For example: advice on a property dispute" maxLength={300} value={reason}
                     onChange={e => setReason(e.target.value)} />
                 </label>
+                <ul className="ld-full book-rules">
+                  <li>Your appointment is confirmed only after the lawyer accepts it.</li>
+                  <li>If the lawyer doesn&apos;t accept before the time passes, the request expires on its own.</li>
+                </ul>
               </div>
             )}
             {needCnic && (

@@ -3,14 +3,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppointmentPopup from '../../AppointmentPopup'
-import NotificationBell from '../../Notifications'
-import ReviewList from '../../ReviewList'
-import { supabase, pic, onlyDigits, logoutAndRedirect, QUALIFICATIONS, LICENSE_LEVELS, splitChoice, showDateTime } from '@/lib/supabase'
+import { supabase, pic, onlyDigits, logoutAndRedirect, QUALIFICATIONS, LICENSE_LEVELS, splitChoice, showDateTime, fileError } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 
 // sidebar items that are not built yet, they show a "Soon" tag
-const SOON_ITEMS = ['My Clients', 'My Cases', 'Messages', 'Video Consultations', 'AI Legal Assistant', 'Documents']
+const SOON_ITEMS = ['My Clients', 'My Cases', 'Messages', 'Video Consultations', 'AI Legal Assistant', 'Documents', 'Reviews']
 
 // numbers from the reference dashboard that need tables we don't have yet
 const SOON_STATS = ['Active cases', 'Total clients']
@@ -28,7 +26,7 @@ export default function LawyerDashboard() {
   const [services, setServices] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [msg, setMsg] = useState('')
-  const [tab, setTab] = useState('dashboard')   // 'dashboard', 'appointments', 'reviews' or 'profile'
+  const [tab, setTab] = useState('dashboard')   // 'dashboard', 'appointments' or 'profile'
   const [menu, setMenu] = useState(false)       // sidebar open on phones
   const [appts, setAppts] = useState<any[]>([])
   const [clients, setClients] = useState<Record<string, any>>({})   // user id -> { full_name, email }
@@ -69,7 +67,8 @@ export default function LawyerDashboard() {
   async function setStatus(id: number, status: string) {
     setApptMsg('')
     const r = await supabase.from('appointments').update({ status }).eq('id', id).select()
-    if (r.error?.code === '23505') return setApptMsg('You already have an accepted appointment at this time.')
+    // 23505 = same exact time, 42501 = blocked by the 1 hour rule in the database
+    if (r.error?.code === '23505' || r.error?.code === '42501') return setApptMsg('You already have an accepted appointment within 1 hour of this time.')
     if (r.error) return setApptMsg(r.error.message)
     if (!r.data?.length) return setApptMsg('Not updated. Refresh the page and try again.')
     setAppts(appts.map(a => a.id === id ? { ...a, status } : a))
@@ -91,6 +90,7 @@ export default function LawyerDashboard() {
       phone, specializations: specs,
       qualification, license_level, experience_years: Number(experience), services: services.trim(),
     }
+    if (photo && fileError(photo, false)) return setMsg(fileError(photo, false))
     if (photo) {
       const p = `${me.user_id}/${Date.now()}-pic`
       const up = await supabase.storage.from('lawyer-pictures').upload(p, photo)
@@ -151,7 +151,6 @@ export default function LawyerDashboard() {
         <div className="side-links">
           <button className={tab === 'dashboard' ? 'on' : ''} onClick={() => { setTab('dashboard'); setMenu(false) }}>Dashboard</button>
           <button className={tab === 'appointments' ? 'on' : ''} onClick={() => { setTab('appointments'); setMenu(false) }}>Appointments</button>
-          <button className={tab === 'reviews' ? 'on' : ''} onClick={() => { setTab('reviews'); setMenu(false) }}>Reviews</button>
           {SOON_ITEMS.map(item => (
             <button key={item} disabled className="side-soon">{item} <span className="lp-soon">Soon</span></button>
           ))}
@@ -171,7 +170,7 @@ export default function LawyerDashboard() {
                 <p>Here is your practice overview for today.</p>
               </div>
               <div className="ldb-head-right">
-                <NotificationBell />
+                <button className="ghost" disabled>Notifications <span className="lp-soon">Soon</span></button>
                 {me.picture_path
                   ? <img src={pic(me.picture_path)} alt="" className="ldb-avatar" />
                   : <span className="avatar ldb-avatar">{me.full_name[0]}</span>}
@@ -232,16 +231,6 @@ export default function LawyerDashboard() {
           </>
         )}
 
-        {tab === 'reviews' && (
-          <>
-            <h1>Reviews</h1>
-            <section className="ld-card">
-              <p>Ratings from your clients after their appointments.</p>
-              <ReviewList lawyerId={me.user_id} />
-            </section>
-          </>
-        )}
-
         {tab === 'profile' && (
           <>
             <h1>My Profile</h1>
@@ -282,7 +271,7 @@ export default function LawyerDashboard() {
                   onChange={e => setServices(e.target.value)} />
               </label>
               <label className="ld-full">New profile picture (optional)
-                <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
               </label>
             </div>
 

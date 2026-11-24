@@ -39,17 +39,18 @@ export const CONSULTATION_TYPES = ['In-person', 'Phone call']
 
 export const CASE_TYPES = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate', 'Other']
 
-// CNIC pictures: JPG, PNG, WEBP or PDF, at most 5 MB
-export const fileError = (f: File) =>
-  !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(f.type) ? `${f.name}: only JPG, PNG or PDF files are allowed.`
+// Uploads: JPG, PNG or WEBP pictures (and PDF where pdfOk), at most 5 MB.
+// Some browsers call a JPG "image/jpg", so both names are allowed.
+export const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+
+export const fileError = (f: File, pdfOk = true) =>
+  ![...IMAGE_TYPES, ...(pdfOk ? ['application/pdf'] : [])].includes(f.type)
+    ? `${f.name}: only JPG, PNG, WEBP${pdfOk ? ' or PDF' : ''} files are allowed.`
   : f.size > 5 * 1024 * 1024 ? `${f.name} is bigger than 5 MB.`
   : ''
 
 export const showDateTime = (iso: string) =>
   new Date(iso).toLocaleString('en-PK', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-
-// star text for a rating, for example 4 -> ★★★★☆ (an average like 4.4 is rounded)
-export const stars = (rating: number) => '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating))
 
 export const nameOk = (v: string) => /^[A-Za-z][A-Za-z .'-]{1,49}$/.test(v.trim())
 

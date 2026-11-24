@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase, onlyDigits, fmtCnic, cleanName, nameOk, QUALIFICATIONS, LICENSE_LEVELS, splitChoice } from '@/lib/supabase'
+import { supabase, onlyDigits, fmtCnic, cleanName, nameOk, QUALIFICATIONS, LICENSE_LEVELS, splitChoice, fileError } from '@/lib/supabase'
 
 const SPECS = ['Criminal', 'Family', 'Property', 'Cybercrime', 'Corporate']
 const PROVINCES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad', 'Gilgit-Baltistan']
@@ -74,6 +74,8 @@ export default function Apply() {
       qualification, license_level, services: f.services.trim(),
       experience_years: Number(f.experience_years),
     }
+    const badFile = (photo && fileError(photo, false)) || (cnicFile && fileError(cnicFile))
+    if (badFile) return setMsg(badFile)
     if (photo) {
       const p = `${user.id}/${Date.now()}-pic`
       const up = await supabase.storage.from('lawyer-pictures').upload(p, photo)
@@ -209,10 +211,10 @@ export default function Apply() {
         <h2>4. Documents</h2>
         <div className="ld-grid">
           <label>Profile picture{editing && ' (leave empty to keep the current one)'}
-            <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
           </label>
-          <label>CNIC (PDF file){editing && ' (leave empty to keep the current one)'}
-            <input type="file" accept="application/pdf" onChange={e => setCnicFile(e.target.files?.[0] ?? null)} />
+          <label>CNIC (picture or PDF){editing && ' (leave empty to keep the current one)'}
+            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setCnicFile(e.target.files?.[0] ?? null)} />
           </label>
         </div>
 

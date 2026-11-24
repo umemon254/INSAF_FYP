@@ -306,6 +306,7 @@ export default function Admin() {
               <div className="grow">
                 <b>{u?.full_name || '-'}</b> <span className={`badge ${v.status}`}>{v.status}</span><br />
                 {u?.email}<br />
+                {v.phone && <>{v.phone} · {v.city}<br /></>}
                 CNIC: {v.cnic} · <a href={v.front_url} target="_blank" rel="noreferrer">Front</a> · <a href={v.back_url} target="_blank" rel="noreferrer">Back</a>
                 {v.rejection_reason && <><br />Reason: {v.rejection_reason}</>}
               </div>
@@ -347,7 +348,7 @@ export default function Admin() {
                 <p>Email: {view.email}<br />
                   Phone: {view.phone}<br />
                   CNIC: {view.cnic}<br />
-                  {view.cnic_url && <a href={view.cnic_url} target="_blank" rel="noreferrer">Open CNIC PDF</a>}</p>
+                  {view.cnic_url && <a href={view.cnic_url} target="_blank" rel="noreferrer">Open CNIC file</a>}</p>
               </div>
             </div>
                         {confirm ? (
@@ -383,4 +384,8 @@ export default function Admin() {
       )}
     </div>
   )
+
+
+
+  
 }

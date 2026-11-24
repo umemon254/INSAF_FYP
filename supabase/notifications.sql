@@ -17,6 +17,15 @@ create index if not exists notifications_user_created_idx
 create index if not exists notifications_user_unread_idx
   on public.notifications (user_id, is_read) where is_read = false;
 
+-- If this table was already created manually in the live project, bring it up to
+-- the same shape without dropping existing notification records.
+alter table public.notifications add column if not exists appointment_id bigint
+  references public.appointments(id) on delete cascade;
+alter table public.notifications add column if not exists message text;
+alter table public.notifications add column if not exists link text not null default '/dashboard/notifications';
+alter table public.notifications add column if not exists is_read boolean not null default false;
+alter table public.notifications add column if not exists created_at timestamptz not null default now();
+
 alter table public.notifications enable row level security;
 
 drop policy if exists "read own notifications" on public.notifications;
@@ -33,7 +42,6 @@ create policy "mark own notifications read"
 -- Clients and lawyers cannot insert or delete notifications directly.
 revoke all on public.notifications from anon, authenticated;
 grant select, update on public.notifications to authenticated;
-grant usage, select on sequence public.notifications_id_seq to authenticated;
 
 create or replace function public.notify_appointment_parties()
 returns trigger

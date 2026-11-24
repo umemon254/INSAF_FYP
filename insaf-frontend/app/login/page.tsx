@@ -10,17 +10,29 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
+  // Only allow known local destinations. Never redirect to an external URL.
+  function requestedDestination() {
+    const next = new URLSearchParams(window.location.search).get('next')
+    if (next === 'lawyer') return '/lawyer/apply'
+    if (next && next.startsWith('/') && !next.startsWith('//')) return next
+    return null
+  }
+
   async function go(id: string) {
     const admin = await supabase.from('admins').select('user_id').eq('user_id', id).maybeSingle()
     if (admin.error) throw new Error('Admin check failed: ' + admin.error.message)
     if (admin.data) return window.location.replace('/admin')
-    // approved lawyers have a row in lawyer_directory, they get their own dashboard
+
+    // Approved lawyers keep their dashboard as the highest-priority destination.
     const lawyer = await supabase.from('lawyer_directory').select('user_id').eq('user_id', id).maybeSingle()
-    window.location.replace(lawyer.data ? '/lawyer/dashboard' : '/')   // normal users go to the home page
+    if (lawyer.error) throw new Error('Lawyer check failed: ' + lawyer.error.message)
+    if (lawyer.data) return window.location.replace('/lawyer/dashboard')
+
+    window.location.replace(requestedDestination() || '/')
   }
 
   useEffect(() => {
-    const saved = sessionStorage.getItem('insaf_email')   // email typed at sign-up
+    const saved = sessionStorage.getItem('insaf_email')
     if (saved) { setEmail(saved); sessionStorage.removeItem('insaf_email') }
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) go(data.session.user.id).catch(e => setMsg(e.message))
@@ -38,7 +50,7 @@ export default function Login() {
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Login failed. Please try again.')
     } finally {
-      setBusy(false)   // always give the button back, even after an error
+      setBusy(false)
     }
   }
 

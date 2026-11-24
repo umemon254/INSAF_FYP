@@ -4,12 +4,56 @@ import Link from 'next/link'
 import { supabase, showDateTime } from '@/lib/supabase'
 import AppointmentPopup from '../../AppointmentPopup'
 
+function ReviewForm({ appointment, onSubmitted }: { appointment: any, onSubmitted: () => void }) {
+  const [rating, setRating] = useState(5)
+  const [comment, setComment] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function submit() {
+    if (busy) return
+    setBusy(true); setMsg('')
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) { setBusy(false); return setMsg('Please log in again.') }
+    const r = await supabase.from('reviews').insert({
+      appointment_id: appointment.id,
+      lawyer_id: appointment.lawyer_id,
+      reviewer_id: auth.user.id,
+      rating,
+      comment: comment.trim() || null,
+    })
+    setBusy(false)
+    if (r.error?.code === '23505') return setMsg('You have already reviewed this appointment.')
+    if (r.error) return setMsg(r.error.message)
+    setMsg('Review submitted. Thank you!')
+    onSubmitted()
+  }
+
+  return (
+    <div className="ld-card">
+      <h3>Review this lawyer</h3>
+      <label>Rating
+        <select value={rating} onChange={e => setRating(Number(e.target.value))}>
+          {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} / 5</option>)}
+        </select>
+      </label>
+      <label>Comment (optional)
+        <textarea maxLength={1000} value={comment} onChange={e => setComment(e.target.value)}
+          placeholder="Share your experience with this lawyer" />
+      </label>
+      {msg && <p className="ld-msg">{msg}</p>}
+      <button onClick={submit} disabled={busy}>{busy ? 'Submitting...' : 'Submit review'}</button>
+    </div>
+  )
+}
+
 // My appointments: every booking this user made, newest date first
 export default function MyAppointments() {
   const [list, setList] = useState<any[] | null>(null)
   const [lawyerNames, setLawyerNames] = useState<Record<string, string>>({})
+  const [reviewed, setReviewed] = useState<number[]>([])
   const [msg, setMsg] = useState('')
-  const [open, setOpen] = useState<any>(null)   // appointment shown in the popup
+  const [open, setOpen] = useState<any>(null)
 
   async function load() {
     const { data } = await supabase.auth.getUser()
@@ -19,13 +63,16 @@ export default function MyAppointments() {
     if (r.error) return setMsg(r.error.message)
     setList(r.data)
 
-    // appointments only keep the lawyer id, so get their names from the directory
     const ids = [...new Set(r.data.map(a => a.lawyer_id))]
-    if (!ids.length) return
-    const d = await supabase.from('lawyer_directory').select('user_id, full_name').in('user_id', ids)
-    const names: Record<string, string> = {}
-    d.data?.forEach(l => { names[l.user_id] = l.full_name })
-    setLawyerNames(names)
+    if (ids.length) {
+      const d = await supabase.from('lawyer_directory').select('user_id, full_name').in('user_id', ids)
+      const names: Record<string, string> = {}
+      d.data?.forEach(l => { names[l.user_id] = l.full_name })
+      setLawyerNames(names)
+    }
+
+    const reviews = await supabase.from('reviews').select('appointment_id').eq('reviewer_id', data.user.id)
+    if (!reviews.error) setReviewed((reviews.data ?? []).map(x => x.appointment_id))
   }
 
   useEffect(() => { load() }, [])
@@ -54,7 +101,6 @@ export default function MyAppointments() {
         {list?.map(a => (
           <div key={a.id} className="appt-row" onClick={() => setOpen(a)}>
             <div>
-              {/* a lawyer missing from the directory was removed or blocked by the admin */}
               <b>{lawyerNames[a.lawyer_id] ? `Adv. ${lawyerNames[a.lawyer_id]}` : 'Lawyer no longer listed'}</b>
               <small>{showDateTime(a.appointment_at)} · {a.consultation_type}</small>
               <p>{a.reason}</p>
@@ -68,6 +114,10 @@ export default function MyAppointments() {
           </div>
         ))}
       </div>
+
+      {list?.filter(a => a.status === 'completed' && !reviewed.includes(a.id)).map(a => (
+        <ReviewForm key={a.id} appointment={a} onSubmitted={load} />
+      ))}
 
       {open && (
         <AppointmentPopup appt={open} onClose={() => setOpen(null)}

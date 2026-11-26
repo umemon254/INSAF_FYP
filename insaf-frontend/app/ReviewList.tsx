@@ -1,6 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, stars } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+
+function stars(rating: number) {
+  const rounded = Math.round(rating)
+  return '★'.repeat(rounded) + '☆'.repeat(5 - rounded)
+}
 
 // Average rating and all reviews of one lawyer.
 // Used on the lawyer profile page and the Reviews tab of the lawyer dashboard.
